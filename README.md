@@ -8,9 +8,10 @@ Reads NFC scan logs from a SQLite database and renders them as an interactive ne
 
 ## Features
 
+- **Rounds list** — `/rounds` page with a table of all recorded sessions (name, topology, event count, duration); names are editable inline
 - **Network map** — stations as nodes, paths as draggable arcs; fully rearrangeable layout persisted per round
 - **Replay** — scrub or play through a recorded game session; stock levels update on each station as you advance
-- **Sidebar** — round selector with custom names, layer toggles (Storage / Taxed / Traffic)
+- **Sidebar** — round stats and layer toggles (Storage / Taxed / Traffic)
 - **Grid snap** — hold Ctrl while dragging a node to snap to a grid sized 2× the largest node
 - **Persistent layout** — node positions, edge arc shapes, and custom round names are saved to `layout/<round_id>.json`
 
@@ -20,10 +21,11 @@ Reads NFC scan logs from a SQLite database and renders them as an interactive ne
 
 | Layer    | Tech                              |
 |----------|-----------------------------------|
-| Backend  | Python · FastAPI · uvicorn        |
+| Backend  | Python 3.12 · FastAPI · uvicorn   |
 | Database | SQLite (read-only via `sqlite3`)  |
-| Frontend | React 18 · TypeScript · Vite      |
-| Graph    | React Flow                        |
+| Frontend | React 19 · TypeScript · Vite      |
+| Graph    | React Flow 11                     |
+| Routing  | React Router v7                   |
 
 ---
 
@@ -33,8 +35,8 @@ Reads NFC scan logs from a SQLite database and renders them as an interactive ne
 
 ```bash
 cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+py -3.12 -m pip install -r requirements.txt
+py -3.12 -m uvicorn main:app --reload --port 8000
 ```
 
 ### Frontend (dev)
@@ -45,7 +47,7 @@ npm install
 npm run dev        # proxies /api → localhost:8000
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173) — redirects to `/rounds`.
 
 ### Frontend (production build)
 
@@ -58,10 +60,10 @@ cd frontend && npm run build
 
 ## Data
 
-Place the SQLite log file at:
+The SQLite log file is committed at:
 
 ```
-data/game-logs-YYYY-MM-DD.sqlite3
+data/game-logs-2026-03-26.sqlite3
 ```
 
 Update the path in [`backend/db.py`](backend/db.py) if the filename differs.

@@ -16,10 +16,10 @@ Visualization tool for the **Routing Game** — a physical scouting/camp game. R
 ### Running the app
 
 ```bash
-# Terminal 1 — backend
+# Terminal 1 — backend (requires Python 3.12+)
 cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+py -3.12 -m pip install -r requirements.txt
+py -3.12 -m uvicorn main:app --reload --port 8000
 
 # Terminal 2 — frontend dev server
 cd frontend
@@ -41,19 +41,24 @@ routing-statistics/
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
-│       ├── App.tsx                    # Root layout, round selection, layer toggles
+│       ├── App.tsx                    # Thin routing shell — <BrowserRouter> is in main.tsx
+│       ├── main.tsx                   # Entry point; wraps App in BrowserRouter
 │       ├── api/client.ts              # Typed fetch wrappers
 │       ├── types/game.ts              # Shared TypeScript interfaces
-│       └── components/
-│           ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid
-│           ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges
-│           ├── StationNode.tsx        # Node with stock badges
-│           ├── StockBadge.tsx         # Coloured material count chip
-│           └── ReplayControls.tsx     # Play/pause scrubber
+│       ├── components/
+│       │   ├── AppHeader.tsx          # Persistent header with nav link to /rounds
+│       │   ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid
+│       │   ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges
+│       │   ├── StationNode.tsx        # Node with stock badges (fixed width 88px)
+│       │   ├── StockBadge.tsx         # Coloured material count chip
+│       │   └── ReplayControls.tsx     # Play/pause scrubber
+│       └── pages/
+│           ├── RoundsList.tsx         # /rounds — table of sessions with inline name editing
+│           └── Visualizer.tsx         # /visualize/:roundId — network map + replay
 ├── layout/
 │   └── <round_id>.json   # Persisted node positions + edge offsets + custom name
 └── data/
-    └── game-logs-2026-03-26.sqlite3   # gitignored — copy manually to this path
+    └── game-logs-2026-03-26.sqlite3   # committed to git
 ```
 
 ### API endpoints
@@ -87,11 +92,21 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 - `card` events → update truck location (`router` field) and load (`cardStorage`), update station stock
 - Returns `GameState` with `stations` (stock per material) and `trucks` (location + load)
 
+### Routes
+
+| Path | Page |
+|------|------|
+| `/` | Redirects to `/rounds` |
+| `/rounds` | Table of all rounds — columns: ID, Name (editable), Topology, Events, Duration, Open |
+| `/visualize/:roundId` | Network map + replay for the selected round |
+
 ### UI behaviours to know
 
+- **Rounds table — Name column:** click any name cell to edit inline; Enter/blur saves to `layout/<id>.json`; Escape cancels. Shows `round_name` from DB as default when no custom name is set.
+- **Rounds table — Topology column:** `#nodes / #edges` fetched from `/api/round/{id}/definition`.
 - **Edge drag:** grab anywhere on an arc to reshape it (quadratic bezier, offset stored as `{ox, oy}` from midpoint)
 - **Node snap:** hold **Ctrl** while dragging a node to snap to a grid = 2 × largest node dimension; a banner confirms when active
-- **Round name:** click the name below the round dropdown to edit inline; Enter/Escape to confirm/cancel; persists in `layout/<id>.json`
+- **Node anchor:** edges connect at horizontal center + middle of the letter row (18px from top). Nodes have fixed width (88px) so the anchor is stable during replay even as stock badges appear/disappear.
 - **Layer toggles:** Storage / Taxed / Traffic checkboxes in the sidebar — wired up but not yet functional
 
 ### Known data quirks (round 21)

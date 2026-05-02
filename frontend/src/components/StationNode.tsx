@@ -19,7 +19,7 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
         border: '2px solid #3a4a5a',
         borderRadius: 8,
         padding: '6px 10px',
-        minWidth: 64,
+        width: 88,
         textAlign: 'center',
         fontFamily: 'monospace',
         userSelect: 'none',

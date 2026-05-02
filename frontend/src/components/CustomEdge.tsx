@@ -57,11 +57,14 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
 
   if (!sourceNode || !targetNode) return null;
 
-  // Compute node centers (width/height set by RF after first render; fall back to estimate)
-  const sx = sourceNode.position.x + (sourceNode.width ?? 80) / 2;
-  const sy = sourceNode.position.y + (sourceNode.height ?? 50) / 2;
-  const tx = targetNode.position.x + (targetNode.width ?? 80) / 2;
-  const ty = targetNode.position.y + (targetNode.height ?? 50) / 2;
+  // Anchor at horizontal center + vertical middle of the letter row.
+  // Node width is fixed (88px in StationNode), so width/2 is a constant and x never drifts.
+  // 18px = border(2) + padding-top(6) + half-letter-row(9.6) — stable regardless of badge count.
+  const anchorY = 18;
+  const sx = sourceNode.position.x + (sourceNode.width ?? 88) / 2;
+  const sy = sourceNode.position.y + anchorY;
+  const tx = targetNode.position.x + (targetNode.width ?? 88) / 2;
+  const ty = targetNode.position.y + anchorY;
 
   const midX = (sx + tx) / 2;
   const midY = (sy + ty) / 2;
