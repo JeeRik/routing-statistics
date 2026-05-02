@@ -11,6 +11,98 @@ Visualization tool for the **Routing Game** — a physical scouting/camp game. R
 
 ---
 
+## What's built
+
+### Running the app
+
+```bash
+# Terminal 1 — backend
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+
+# Terminal 2 — frontend dev server
+cd frontend
+npm install
+npm run dev        # http://localhost:5173, proxies /api → :8000
+```
+
+Always use `--reload` on the backend so model changes take effect without a manual restart.
+
+### Project structure
+
+```
+routing-statistics/
+├── backend/
+│   ├── main.py       # FastAPI app + API routes
+│   ├── db.py         # SQLite query layer (read-only, no ORM)
+│   ├── models.py     # Pydantic request/response models
+│   ├── replay.py     # Event-driven replay engine
+│   └── requirements.txt
+├── frontend/
+│   └── src/
+│       ├── App.tsx                    # Root layout, round selection, layer toggles
+│       ├── api/client.ts              # Typed fetch wrappers
+│       ├── types/game.ts              # Shared TypeScript interfaces
+│       └── components/
+│           ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid
+│           ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges
+│           ├── StationNode.tsx        # Node with stock badges
+│           ├── StockBadge.tsx         # Coloured material count chip
+│           └── ReplayControls.tsx     # Play/pause scrubber
+├── layout/
+│   └── <round_id>.json   # Persisted node positions + edge offsets + custom name
+└── data/
+    └── game-logs-2026-03-26.sqlite3   # gitignored — copy manually to this path
+```
+
+### API endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/rounds` | List rounds with event counts |
+| GET | `/api/round/{id}/definition` | Round def (routers, links, processes, materials) |
+| GET | `/api/round/{id}/events` | All events, sorted by time (cached in memory) |
+| GET | `/api/round/{id}/state?time_ms=N` | Computed game state at time N |
+| GET | `/api/layout/{id}` | Load saved layout (404 if none) |
+| POST | `/api/layout/{id}` | Save layout — **merge** with existing file, not overwrite |
+
+### Layout file format
+
+```json
+{
+  "positions":    { "A": {"x": 120, "y": 340}, ... },
+  "edge_offsets": { "A-B": {"ox": 0, "oy": -40}, ... },
+  "custom_name":  "Game night 2026-03-26"
+}
+```
+
+Layout saves are **partial merges** (`exclude_unset=True`): saving positions never erases a custom name and vice versa.
+
+### Replay engine
+
+`replay.py::compute_state(events, round_start_ms, time_ms)`:
+- Iterates events sorted by `next_attention` (ms epoch) up to `round_start_ms + time_ms`
+- `transEnd` events → update station stock from `routerStorage`
+- `card` events → update truck location (`router` field) and load (`cardStorage`), update station stock
+- Returns `GameState` with `stations` (stock per material) and `trucks` (location + load)
+
+### UI behaviours to know
+
+- **Edge drag:** grab anywhere on an arc to reshape it (quadratic bezier, offset stored as `{ox, oy}` from midpoint)
+- **Node snap:** hold **Ctrl** while dragging a node to snap to a grid = 2 × largest node dimension; a banner confirms when active
+- **Round name:** click the name below the round dropdown to edit inline; Enter/Escape to confirm/cancel; persists in `layout/<id>.json`
+- **Layer toggles:** Storage / Taxed / Traffic checkboxes in the sidebar — wired up but not yet functional
+
+### Known data quirks (round 21)
+
+- `routerStorage` is the absolute current stock at a router, not a delta — use the latest value seen before time T
+- Station H accumulates blue material (>100 units by mid-game) because trucks stopped collecting — this is real game data, not a bug
+- Round 21 has 16 stations (A–P), 56 directed links, 1200 s duration
+- `round_start_time` is stored in `game` table as a Unix float (seconds); multiply by 1000 for ms
+
+---
+
 ## The Game
 
 A physical game for up to 26 players (groups KSI and IBIS). Goal: build a rocket by transporting and assembling materials across a network of factory stations.
