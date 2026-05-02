@@ -22,6 +22,6 @@ export const api = {
   getState: (roundId: number, timeMs: number) =>
     get<GameState>(`/api/round/${roundId}/state?time_ms=${timeMs}`),
   getLayout: (roundId: number) => get<LayoutData>(`/api/layout/${roundId}`),
-  saveLayout: (roundId: number, layout: LayoutData) =>
+  saveLayout: (roundId: number, layout: Partial<LayoutData>) =>
     post<{ ok: boolean }>(`/api/layout/${roundId}`, layout),
 };

@@ -55,5 +55,6 @@ export interface EdgeOffset {
 
 export interface LayoutData {
   positions: Record<string, NodePosition>;
-  edge_offsets: Record<string, EdgeOffset>;
+  edge_offsets?: Record<string, EdgeOffset>;
+  custom_name?: string;
 }

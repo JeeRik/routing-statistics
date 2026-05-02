@@ -47,5 +47,6 @@ class EdgeOffset(BaseModel):
 
 
 class LayoutData(BaseModel):
-    positions: dict[str, NodePosition]
+    positions: dict[str, NodePosition] = {}
     edge_offsets: dict[str, EdgeOffset] = {}
+    custom_name: str | None = None

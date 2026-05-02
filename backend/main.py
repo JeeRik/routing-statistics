@@ -78,7 +78,11 @@ def get_layout(round_id: int):
 @app.post("/api/layout/{round_id}")
 def save_layout(round_id: int, layout: LayoutData):
     layout_file = LAYOUT_DIR / f"{round_id}.json"
-    layout_file.write_text(layout.model_dump_json())
+    existing = json.loads(layout_file.read_text()) if layout_file.exists() else {}
+    # Only merge keys that were explicitly sent (exclude_unset), so saving positions
+    # doesn't erase the custom name and saving a name doesn't erase positions.
+    incoming = layout.model_dump(exclude_unset=True)
+    layout_file.write_text(json.dumps({**existing, **incoming}))
     return {"ok": True}
 
 
