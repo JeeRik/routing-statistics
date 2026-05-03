@@ -111,6 +111,7 @@ export function Visualizer() {
               roundId={roundId}
               definition={definition}
               gameState={gameState}
+              activeLayers={activeLayers}
             />
             {definition.duration > 0 && (
               <ReplayControls

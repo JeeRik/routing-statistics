@@ -6,7 +6,6 @@ import ReactFlow, {
   Panel,
   useNodesState,
   useEdgesState,
-  useStore,
   type Node,
   type Edge,
   type NodeChange,
@@ -16,31 +15,18 @@ import { StationNode, type StationNodeData } from './StationNode';
 import { CustomEdge, type CustomEdgeData } from './CustomEdge';
 import type { GameState, LayoutData, RoundDefinition } from '../types/game';
 import { api } from '../api/client';
+import { MATERIAL_IDS } from '../constants';
 
 const NODE_TYPES = { station: StationNode };
 const EDGE_TYPES = { custom: CustomEdge };
 
-// Renders nothing; reads measured node sizes from the RF store and reports the max.
-// Must be rendered inside <ReactFlow> to have store access.
-function GridSizer({ onSize }: { onSize: (size: number) => void }) {
-  const maxDim = useStore((s) => {
-    let max = 80;
-    s.nodeInternals.forEach((n) => {
-      if (n.width) max = Math.max(max, n.width);
-      if (n.height) max = Math.max(max, n.height);
-    });
-    return max;
-  });
-  useEffect(() => {
-    onSize(Math.round(maxDim * 2));
-  }, [maxDim, onSize]);
-  return null;
-}
+const SNAP_GRID = 160;
 
 interface Props {
   roundId: number;
   definition: RoundDefinition;
   gameState: GameState | null;
+  activeLayers: Set<string>;
 }
 
 function circleLayout(letters: string[]): Record<string, { x: number; y: number }> {
@@ -61,13 +47,39 @@ function buildNodes(
   definition: RoundDefinition,
   positions: Record<string, { x: number; y: number }>,
   gameState: GameState | null,
+  activeLayers: Set<string>,
 ): Node<StationNodeData>[] {
-  return Object.entries(definition.routers).map(([letter, routerDef]) => ({
-    id: letter,
-    type: 'station',
-    position: positions[letter] ?? { x: 0, y: 0 },
-    data: { letter, label: routerDef.label, state: gameState?.stations[letter] },
-  }));
+  const toId = (name: string) => MATERIAL_IDS[name] ?? name;
+  // definition.materials and process keys use material names ("blue"); stock uses numeric IDs ("2")
+  const materialCapacities = Object.fromEntries(
+    Object.entries(definition.materials).map(([name, m]) => [toId(name), (m as { capacity: number }).capacity]),
+  );
+  const showSupply = activeLayers.has('storage');
+
+  return Object.entries(definition.routers).map(([letter, routerDef]) => {
+    const procName = routerDef.processes[0];
+    const proc = procName ? definition.processes[procName] : null;
+    const processDef = proc
+      ? {
+          inputs: Object.keys(proc.inputs).map(toId),
+          outputs: Object.keys(proc.outputs).map(toId),
+        }
+      : undefined;
+
+    return {
+      id: letter,
+      type: 'station',
+      position: positions[letter] ?? { x: 0, y: 0 },
+      data: {
+        letter,
+        label: routerDef.label,
+        state: gameState?.stations[letter],
+        processDef,
+        materialCapacities,
+        showSupply,
+      },
+    };
+  });
 }
 
 function buildEdges(
@@ -97,7 +109,7 @@ function buildEdges(
     .filter((e): e is Edge<CustomEdgeData> => e !== null);
 }
 
-export function NetworkMap({ roundId, definition, gameState }: Props) {
+export function NetworkMap({ roundId, definition, gameState, activeLayers }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState<StationNodeData>([]);
   const [edges, setEdges] = useEdgesState<CustomEdgeData>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -105,7 +117,6 @@ export function NetworkMap({ roundId, definition, gameState }: Props) {
   const edgeOffsetsRef = useRef<Record<string, { ox: number; oy: number }>>({});
 
   const [snapActive, setSnapActive] = useState(false);
-  const [gridSize, setGridSize] = useState(160);
 
   // Ctrl held → snap to grid
   useEffect(() => {
@@ -165,7 +176,7 @@ export function NetworkMap({ roundId, definition, gameState }: Props) {
       if (cancelled) return;
       positionsRef.current = positions;
       edgeOffsetsRef.current = edgeOffsets;
-      setNodes(buildNodes(definition, positions, null));
+      setNodes(buildNodes(definition, positions, null, activeLayers));
       setEdges(buildEdges(definition, edgeOffsets, handleControlChange));
     })();
     return () => { cancelled = true; };
@@ -180,6 +191,16 @@ export function NetworkMap({ roundId, definition, gameState }: Props) {
       })),
     );
   }, [gameState, setNodes]);
+
+  // Toggle supply row when activeLayers changes
+  useEffect(() => {
+    setNodes((prev) =>
+      prev.map((node) => ({
+        ...node,
+        data: { ...node.data, showSupply: activeLayers.has('storage') },
+      })),
+    );
+  }, [activeLayers, setNodes]);
 
   const onNodesChangeWithSave = useCallback(
     (changes: NodeChange[]) => {
@@ -207,13 +228,12 @@ export function NetworkMap({ roundId, definition, gameState }: Props) {
         edgeTypes={EDGE_TYPES}
         onNodesChange={onNodesChangeWithSave}
         snapToGrid={snapActive}
-        snapGrid={[gridSize, gridSize]}
+        snapGrid={[SNAP_GRID, SNAP_GRID]}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.3}
         maxZoom={3}
       >
-        <GridSizer onSize={setGridSize} />
         <Background color="#2a3a4a" gap={20} />
         <Controls />
         <MiniMap
@@ -235,7 +255,7 @@ export function NetworkMap({ roundId, definition, gameState }: Props) {
               pointerEvents: 'none',
             }}
           >
-            grid snap — {gridSize}px
+            grid snap — {SNAP_GRID}px
           </Panel>
         )}
       </ReactFlow>

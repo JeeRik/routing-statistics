@@ -11,8 +11,9 @@ Reads NFC scan logs from a SQLite database and renders them as an interactive ne
 - **Rounds list** — `/rounds` page with a table of all recorded sessions (name, topology, event count, duration); names are editable inline
 - **Network map** — stations as nodes, paths as draggable arcs; fully rearrangeable layout persisted per round
 - **Replay** — scrub or play through a recorded game session; stock levels update on each station as you advance
+- **Supply layer** — Storage checkbox adds a row to every node showing factory inputs (left) and output (right) with fill-level coloring: dark at empty, brightening linearly to full color at capacity, glow on overflow
 - **Sidebar** — round stats and layer toggles (Storage / Taxed / Traffic)
-- **Grid snap** — hold Ctrl while dragging a node to snap to a grid sized 2× the largest node
+- **Grid snap** — hold Ctrl while dragging a node to snap to a 160 px grid
 - **Persistent layout** — node positions, edge arc shapes, and custom round names are saved to `layout/<round_id>.json`
 
 ---

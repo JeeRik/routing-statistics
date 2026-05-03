@@ -21,3 +21,7 @@ export const MATERIAL_NAMES: Record<string, string> = {
   '8': 'green',
   '9': 'brown',
 };
+
+export const MATERIAL_IDS: Record<string, string> = Object.fromEntries(
+  Object.entries(MATERIAL_NAMES).map(([id, name]) => [name, id]),
+);

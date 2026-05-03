@@ -47,10 +47,10 @@ routing-statistics/
 │       ├── types/game.ts              # Shared TypeScript interfaces
 │       ├── components/
 │       │   ├── AppHeader.tsx          # Persistent header with nav link to /rounds
-│       │   ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid
+│       │   ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid (fixed 160 px)
 │       │   ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges
-│       │   ├── StationNode.tsx        # Node with stock badges (fixed width 88px)
-│       │   ├── StockBadge.tsx         # Coloured material count chip
+│       │   ├── StationNode.tsx        # Node with supply row (fixed width 105 px)
+│       │   ├── SupplyBadge.tsx        # Fill-level-aware material badge (supply row)
 │       │   └── ReplayControls.tsx     # Play/pause scrubber
 │       └── pages/
 │           ├── RoundsList.tsx         # /rounds — table of sessions with inline name editing
@@ -105,9 +105,10 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 - **Rounds table — Name column:** click any name cell to edit inline; Enter/blur saves to `layout/<id>.json`; Escape cancels. Shows `round_name` from DB as default when no custom name is set.
 - **Rounds table — Topology column:** `#nodes / #edges` fetched from `/api/round/{id}/definition`.
 - **Edge drag:** grab anywhere on an arc to reshape it (quadratic bezier, offset stored as `{ox, oy}` from midpoint)
-- **Node snap:** hold **Ctrl** while dragging a node to snap to a grid = 2 × largest node dimension; a banner confirms when active
-- **Node anchor:** edges connect at horizontal center + middle of the letter row (18px from top). Nodes have fixed width (88px) so the anchor is stable during replay even as stock badges appear/disappear.
-- **Layer toggles:** Storage / Taxed / Traffic checkboxes in the sidebar — wired up but not yet functional
+- **Node snap:** hold **Ctrl** while dragging a node to snap to a fixed 160 px grid; a banner confirms when active
+- **Node anchor:** edges connect at horizontal center + middle of the letter row (18px from top). Nodes have fixed width (105 px) so the anchor is stable during replay.
+- **Layer toggles:** Storage checkbox shows a supply row on each node — inputs (left, plain border) and output (right, white border), color-blended with black by fill level: 0 items = 25% color, 1 item = 50%, full = 100%, overflow = 100% + glow. Taxed / Traffic checkboxes are wired up but not yet functional.
+- **Material name ↔ ID mapping:** process inputs/outputs in `round_def` use name strings (`"blue"`); game-state stock uses numeric string IDs (`"2"`). `MATERIAL_IDS` in `constants.ts` maps names → IDs for the supply row lookup.
 
 ### Known data quirks (round 21)
 
