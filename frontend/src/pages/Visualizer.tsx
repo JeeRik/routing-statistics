@@ -113,6 +113,7 @@ export function Visualizer() {
               definition={definition}
               gameState={gameState}
               activeLayers={activeLayers}
+              timeMs={timeMs}
             />
             {definition.duration > 0 && (
               <ReplayControls

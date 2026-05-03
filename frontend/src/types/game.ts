@@ -28,6 +28,12 @@ export interface RoundDefinition {
   tick_duration_ms: number;
 }
 
+export interface TruckHistoryEntry {
+  time_ms: number;
+  node: string;
+  cargo: number;
+}
+
 export interface StationState {
   stock: Record<string, number>;
   produced?: Record<string, number>;

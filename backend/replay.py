@@ -39,10 +39,11 @@ def compute_state(events: list[dict], round_start_ms: int, time_ms: int) -> Game
             if router:
                 stations[router] = {str(k): v for k, v in router_storage.items()}
             if card_id:
-                trucks[card_id] = {
-                    "location": router or "",
-                    "load": {str(k): v for k, v in card_storage.items()},
-                }
+                new_load = {str(k): v for k, v in card_storage.items() if v > 0}
+                if new_load:
+                    trucks[card_id] = {"location": router or "", "load": new_load}
+                else:
+                    trucks.pop(card_id, None)
 
     return GameState(
         stations={k: StationState(stock=v, produced=produced.get(k, {})) for k, v in stations.items()},

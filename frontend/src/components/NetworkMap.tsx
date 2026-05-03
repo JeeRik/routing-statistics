@@ -27,6 +27,7 @@ interface Props {
   definition: RoundDefinition;
   gameState: GameState | null;
   activeLayers: Set<string>;
+  timeMs: number;
 }
 
 function circleLayout(letters: string[]): Record<string, { x: number; y: number }> {
@@ -57,10 +58,12 @@ function computeTrucksByLocation(gameState: GameState | null): Record<string, Tr
 }
 
 function buildNodes(
+  roundId: number,
   definition: RoundDefinition,
   positions: Record<string, { x: number; y: number }>,
   gameState: GameState | null,
   activeLayers: Set<string>,
+  timeMs: number,
 ): Node<StationNodeData>[] {
   const toId = (name: string) => MATERIAL_IDS[name] ?? name;
   // definition.materials and process keys use material names ("blue"); stock uses numeric IDs ("2")
@@ -94,6 +97,8 @@ function buildNodes(
         showSupply,
         trucks: trucksByLocation[letter] ?? [],
         showCargo,
+        roundId,
+        timeMs,
       },
     };
   });
@@ -126,7 +131,7 @@ function buildEdges(
     .filter((e): e is Edge<CustomEdgeData> => e !== null);
 }
 
-export function NetworkMap({ roundId, definition, gameState, activeLayers }: Props) {
+export function NetworkMap({ roundId, definition, gameState, activeLayers, timeMs }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState<StationNodeData>([]);
   const [edges, setEdges] = useEdgesState<CustomEdgeData>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,7 +198,7 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers }: Pro
       if (cancelled) return;
       positionsRef.current = positions;
       edgeOffsetsRef.current = edgeOffsets;
-      setNodes(buildNodes(definition, positions, null, activeLayers));
+      setNodes(buildNodes(roundId, definition, positions, null, activeLayers, 0));
       setEdges(buildEdges(definition, edgeOffsets, handleControlChange));
     })();
     return () => { cancelled = true; };
@@ -213,6 +218,11 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers }: Pro
       })),
     );
   }, [gameState, setNodes]);
+
+  // Keep timeMs current so truck history popups use the right replay time
+  useEffect(() => {
+    setNodes((prev) => prev.map((node) => ({ ...node, data: { ...node.data, timeMs } })));
+  }, [timeMs, setNodes]);
 
   // Toggle supply/cargo rows when activeLayers changes
   useEffect(() => {

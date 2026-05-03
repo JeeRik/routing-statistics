@@ -44,6 +44,8 @@ export interface StationNodeData {
   showSupply?: boolean;
   trucks?: TruckBubble[];
   showCargo?: boolean;
+  roundId?: number;
+  timeMs?: number;
 }
 
 export function StationNode({ data }: NodeProps<StationNodeData>) {
@@ -152,7 +154,7 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
           {chunkArray(data.trucks, 4).map((row, i) => (
             <div key={i} style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: i > 0 ? 2 : 0 }}>
               {row.map((t) => (
-                <TruckBadge key={t.id} materialId={t.materialId} amount={t.amount} />
+                <TruckBadge key={t.id} materialId={t.materialId} amount={t.amount} truckId={t.id} roundId={data.roundId} timeMs={data.timeMs} />
               ))}
             </div>
           ))}

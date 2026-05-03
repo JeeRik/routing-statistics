@@ -51,7 +51,7 @@ routing-statistics/
 │       │   ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges
 │       │   ├── StationNode.tsx        # Node with supply/cargo rows + process popover (fixed width 105 px)
 │       │   ├── SupplyBadge.tsx        # Fill-level-aware material badge (supply row)
-│       │   ├── TruckBadge.tsx         # Fill-level-aware truck bubble (cargo row, capacity 5)
+│       │   ├── TruckBadge.tsx         # Fill-level-aware truck bubble (cargo row, capacity 5); hover shows full scan-history popup
 │       │   └── ReplayControls.tsx     # Play/pause scrubber; Space bar toggles playback
 │       └── pages/
 │           ├── RoundsList.tsx         # /rounds — table of sessions with inline name editing
@@ -70,6 +70,7 @@ routing-statistics/
 | GET | `/api/round/{id}/definition` | Round def (routers, links, processes, materials) |
 | GET | `/api/round/{id}/events` | All events, sorted by time (cached in memory) |
 | GET | `/api/round/{id}/state?time_ms=N` | Computed game state at time N |
+| GET | `/api/round/{id}/truck/{card_id}/history?time_ms=N` | Scan history for one truck up to time N — `[{time_ms, node, cargo}]` |
 | GET | `/api/layout/{id}` | Load saved layout (404 if none) |
 | POST | `/api/layout/{id}` | Save layout — **merge** with existing file, not overwrite |
 
@@ -90,8 +91,8 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 `replay.py::compute_state(events, round_start_ms, time_ms)`:
 - Iterates events sorted by `next_attention` (ms epoch) up to `round_start_ms + time_ms`
 - `transEnd` events → update station stock from `routerStorage`; accumulate `routerDelta` into per-station `produced` counts
-- `card` events → update truck location (`router` field) and load (`cardStorage`), update station stock
-- Returns `GameState` with `stations` (stock + produced per material) and `trucks` (location + load)
+- `card` events → update truck location (`router` field) and load (`cardStorage`), update station stock; trucks with zero cargo after the event are **removed** from `trucks` (not kept as empty entries)
+- Returns `GameState` with `stations` (stock + produced per material) and `trucks` (location + load; only non-empty trucks included)
 
 ### Routes
 
@@ -110,6 +111,7 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 - **Node anchor:** edges connect at horizontal center + middle of the letter row (18px from top). Nodes have fixed width (105 px) so the anchor is stable during replay.
 - **Layer toggles:** Storage shows a supply row (inputs left, output right) with fill-level color blending. Cargo shows truck bubbles (non-empty trucks at each station, ≤4 per row, same fill-level coloring, capacity 5). Taxed / Traffic are wired up but not yet functional.
 - **Process popover:** hovering the letter/name area of a node shows a portal-rendered tooltip (above all ReactFlow nodes) with the factory recipe and cumulative items produced at current replay time.
+- **Truck history popup:** hovering a truck bubble fetches `/api/round/{id}/truck/{cardId}/history?time_ms=N` and shows a portal popup with header `Card Id: <id> : <colour>` and one log line per scan (`mm:ss : node : cargo`), including zero-cargo hops. Scrollable, max 220 px tall.
 - **Space bar:** toggles play/pause in `ReplayControls`; ignored when an input/select/textarea/button has focus.
 - **Material name ↔ ID mapping:** process inputs/outputs in `round_def` use name strings (`"blue"`); game-state stock uses numeric string IDs (`"2"`). `MATERIAL_IDS` in `constants.ts` maps names → IDs for the supply row lookup.
 

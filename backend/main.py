@@ -67,6 +67,33 @@ def get_state(round_id: int, time_ms: int = 0):
     return compute_state(events, round_start_ms, time_ms)
 
 
+@app.get("/api/round/{round_id}/truck/{card_id}/history")
+def get_truck_history(round_id: int, card_id: str, time_ms: int = 0):
+    defn = db.get_round_definition(round_id)
+    if not defn:
+        raise HTTPException(status_code=404, detail="Round not found")
+    round_start_time = defn.get("round_start_time")
+    if round_start_time is None:
+        return []
+    round_start_ms = int(round_start_time * 1000)
+    mat_id = card_id.split("-")[0]
+    entries = []
+    for ev in _get_events_cached(round_id):
+        ev_game_time = ev["_ts"] - round_start_ms
+        if ev_game_time > time_ms:
+            break
+        inner = ev.get("event", {})
+        if inner.get("type") != "card" or inner.get("cardId") != card_id:
+            continue
+        normalised = {str(k): v for k, v in inner.get("cardStorage", {}).items()}
+        entries.append({
+            "time_ms": ev_game_time,
+            "node": ev.get("router", "?"),
+            "cargo": normalised.get(mat_id, 0),
+        })
+    return entries
+
+
 @app.get("/api/layout/{round_id}", response_model=LayoutData)
 def get_layout(round_id: int):
     layout_file = LAYOUT_DIR / f"{round_id}.json"

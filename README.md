@@ -12,7 +12,7 @@ Reads NFC scan logs from a SQLite database and renders them as an interactive ne
 - **Network map** — stations as nodes, paths as draggable arcs; fully rearrangeable layout persisted per round
 - **Replay** — scrub or play through a recorded game session; stock levels update on each station as you advance
 - **Supply layer** — Storage checkbox adds a row to every node showing factory inputs (left) and output (right) with fill-level coloring: dark at empty, brightening linearly to full color at capacity, glow on overflow
-- **Cargo layer** — Cargo checkbox overlays truck bubbles on each station showing all non-empty trucks currently docked there, colored by material at fill-level brightness (up to 4 per row)
+- **Cargo layer** — Cargo checkbox overlays truck bubbles on each station showing all non-empty trucks currently docked there, colored by material at fill-level brightness (up to 4 per row); hover a bubble to see the truck's full scan history (time · node · cargo) up to the current replay time
 - **Process popover** — hover over a node's name to see its factory recipe (e.g. `[blue] + [yellow] → [gray]`) and how many items it has produced so far at the current replay time
 - **Sidebar** — round stats and layer toggles (Storage / Cargo / Taxed / Traffic)
 - **Grid snap** — hold Ctrl while dragging a node to snap to a 160 px grid
