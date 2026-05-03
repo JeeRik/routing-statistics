@@ -133,6 +133,9 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
                 count={data.state?.stock[id] ?? 0}
                 capacity={data.materialCapacities?.[id] ?? 30}
                 isOutput={false}
+                nodeId={data.letter}
+                roundId={data.roundId}
+                timeMs={data.timeMs}
               />
             ))}
           </div>
@@ -144,6 +147,9 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
                 count={data.state?.stock[id] ?? 0}
                 capacity={data.materialCapacities?.[id] ?? 30}
                 isOutput={true}
+                nodeId={data.letter}
+                roundId={data.roundId}
+                timeMs={data.timeMs}
               />
             ))}
           </div>

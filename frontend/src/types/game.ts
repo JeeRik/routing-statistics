@@ -34,6 +34,12 @@ export interface TruckHistoryEntry {
   cargo: number;
 }
 
+export interface StorageHistoryEntry {
+  time_ms: number;
+  delta: number;
+  card_id: string;
+}
+
 export interface StationState {
   stock: Record<string, number>;
   produced?: Record<string, number>;

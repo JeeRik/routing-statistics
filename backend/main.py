@@ -94,6 +94,35 @@ def get_truck_history(round_id: int, card_id: str, time_ms: int = 0):
     return entries
 
 
+@app.get("/api/round/{round_id}/node/{node}/material/{mat_id}/history")
+def get_storage_history(round_id: int, node: str, mat_id: str, time_ms: int = 0):
+    defn = db.get_round_definition(round_id)
+    if not defn:
+        raise HTTPException(status_code=404, detail="Round not found")
+    round_start_time = defn.get("round_start_time")
+    if round_start_time is None:
+        return []
+    round_start_ms = int(round_start_time * 1000)
+    entries = []
+    for ev in _get_events_cached(round_id):
+        ev_game_time = ev["_ts"] - round_start_ms
+        if ev_game_time > time_ms:
+            break
+        inner = ev.get("event", {})
+        if inner.get("type") != "card" or ev.get("router") != node:
+            continue
+        router_delta = {str(k): v for k, v in inner.get("routerDelta", {}).items()}
+        delta = router_delta.get(mat_id, 0)
+        if delta <= 0:
+            continue
+        entries.append({
+            "time_ms": ev_game_time,
+            "delta": delta,
+            "card_id": inner.get("cardId", "?"),
+        })
+    return entries
+
+
 @app.get("/api/layout/{round_id}", response_model=LayoutData)
 def get_layout(round_id: int):
     layout_file = LAYOUT_DIR / f"{round_id}.json"
