@@ -1,7 +1,39 @@
+import { useState, useRef, Fragment } from 'react';
+import { createPortal } from 'react-dom';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
 import { SupplyBadge } from './SupplyBadge';
+import { TruckBadge } from './TruckBadge';
 import type { StationState } from '../types/game';
+import { MATERIAL_COLORS, MATERIAL_NAMES } from '../constants';
+
+export interface TruckBubble {
+  id: string;
+  materialId: string;
+  amount: number;
+}
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
+}
+
+function ProcessChip({ id }: { id: string }) {
+  return (
+    <span style={{
+      background: MATERIAL_COLORS[id] ?? '#888',
+      color: id === '7' ? '#333' : '#fff',
+      borderRadius: 4,
+      padding: '1px 5px',
+      fontSize: 11,
+      fontWeight: 700,
+      fontFamily: 'monospace',
+    }}>
+      {MATERIAL_NAMES[id] ?? id}
+    </span>
+  );
+}
 
 export interface StationNodeData {
   label: string;
@@ -10,12 +42,25 @@ export interface StationNodeData {
   processDef?: { inputs: string[]; outputs: string[] };
   materialCapacities?: Record<string, number>;
   showSupply?: boolean;
+  trucks?: TruckBubble[];
+  showCargo?: boolean;
 }
 
 export function StationNode({ data }: NodeProps<StationNodeData>) {
+  const nameRef = useRef<HTMLDivElement>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+
+  const handleMouseEnter = () => {
+    if (nameRef.current) {
+      const rect = nameRef.current.getBoundingClientRect();
+      setTooltipPos({ x: rect.right + 8, y: rect.top });
+    }
+  };
+
   return (
     <div
       style={{
+        position: 'relative',
         background: '#1e2530',
         border: '2px solid #3a4a5a',
         borderRadius: 8,
@@ -27,11 +72,54 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
       }}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
-      <div style={{ fontSize: 16, fontWeight: 700, color: '#e0eaf0', lineHeight: 1.2 }}>
-        {data.letter}
+      <div
+        ref={nameRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setTooltipPos(null)}
+      >
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#e0eaf0', lineHeight: 1.2 }}>
+          {data.letter}
+        </div>
+        {data.label !== data.letter && (
+          <div style={{ fontSize: 10, color: '#8a9aaa', marginBottom: 2 }}>{data.label}</div>
+        )}
       </div>
-      {data.label !== data.letter && (
-        <div style={{ fontSize: 10, color: '#8a9aaa', marginBottom: 2 }}>{data.label}</div>
+      {tooltipPos && data.processDef && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: tooltipPos.y,
+          left: tooltipPos.x,
+          background: '#1e2530',
+          border: '1px solid #3a4a5a',
+          borderRadius: 6,
+          padding: '6px 8px',
+          zIndex: 9999,
+          pointerEvents: 'none',
+          whiteSpace: 'nowrap',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            {data.processDef.inputs.map((id, i) => (
+              <Fragment key={id}>
+                {i > 0 && <span style={{ color: '#6a8090' }}>+</span>}
+                <ProcessChip id={id} />
+              </Fragment>
+            ))}
+            {data.processDef.inputs.length > 0 && (
+              <span style={{ color: '#6a8090' }}>→</span>
+            )}
+            {data.processDef.outputs.map((id) => (
+              <ProcessChip key={id} id={id} />
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: '#6a8090' }}>
+            {data.processDef.outputs.reduce((sum, id) => sum + (data.state?.produced?.[id] ?? 0), 0)} produced
+          </div>
+        </div>,
+        document.body,
       )}
       {data.showSupply && data.processDef && (
         <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
@@ -57,6 +145,17 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
               />
             ))}
           </div>
+        </div>
+      )}
+      {data.showCargo && data.trucks && data.trucks.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          {chunkArray(data.trucks, 4).map((row, i) => (
+            <div key={i} style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: i > 0 ? 2 : 0 }}>
+              {row.map((t) => (
+                <TruckBadge key={t.id} materialId={t.materialId} amount={t.amount} />
+              ))}
+            </div>
+          ))}
         </div>
       )}
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />

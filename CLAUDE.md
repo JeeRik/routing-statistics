@@ -49,9 +49,10 @@ routing-statistics/
 │       │   ├── AppHeader.tsx          # Persistent header with nav link to /rounds
 │       │   ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid (fixed 160 px)
 │       │   ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges
-│       │   ├── StationNode.tsx        # Node with supply row (fixed width 105 px)
+│       │   ├── StationNode.tsx        # Node with supply/cargo rows + process popover (fixed width 105 px)
 │       │   ├── SupplyBadge.tsx        # Fill-level-aware material badge (supply row)
-│       │   └── ReplayControls.tsx     # Play/pause scrubber
+│       │   ├── TruckBadge.tsx         # Fill-level-aware truck bubble (cargo row, capacity 5)
+│       │   └── ReplayControls.tsx     # Play/pause scrubber; Space bar toggles playback
 │       └── pages/
 │           ├── RoundsList.tsx         # /rounds — table of sessions with inline name editing
 │           └── Visualizer.tsx         # /visualize/:roundId — network map + replay
@@ -88,9 +89,9 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 
 `replay.py::compute_state(events, round_start_ms, time_ms)`:
 - Iterates events sorted by `next_attention` (ms epoch) up to `round_start_ms + time_ms`
-- `transEnd` events → update station stock from `routerStorage`
+- `transEnd` events → update station stock from `routerStorage`; accumulate `routerDelta` into per-station `produced` counts
 - `card` events → update truck location (`router` field) and load (`cardStorage`), update station stock
-- Returns `GameState` with `stations` (stock per material) and `trucks` (location + load)
+- Returns `GameState` with `stations` (stock + produced per material) and `trucks` (location + load)
 
 ### Routes
 
@@ -107,7 +108,9 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 - **Edge drag:** grab anywhere on an arc to reshape it (quadratic bezier, offset stored as `{ox, oy}` from midpoint)
 - **Node snap:** hold **Ctrl** while dragging a node to snap to a fixed 160 px grid; a banner confirms when active
 - **Node anchor:** edges connect at horizontal center + middle of the letter row (18px from top). Nodes have fixed width (105 px) so the anchor is stable during replay.
-- **Layer toggles:** Storage checkbox shows a supply row on each node — inputs (left, plain border) and output (right, white border), color-blended with black by fill level: 0 items = 25% color, 1 item = 50%, full = 100%, overflow = 100% + glow. Taxed / Traffic checkboxes are wired up but not yet functional.
+- **Layer toggles:** Storage shows a supply row (inputs left, output right) with fill-level color blending. Cargo shows truck bubbles (non-empty trucks at each station, ≤4 per row, same fill-level coloring, capacity 5). Taxed / Traffic are wired up but not yet functional.
+- **Process popover:** hovering the letter/name area of a node shows a portal-rendered tooltip (above all ReactFlow nodes) with the factory recipe and cumulative items produced at current replay time.
+- **Space bar:** toggles play/pause in `ReplayControls`; ignored when an input/select/textarea/button has focus.
 - **Material name ↔ ID mapping:** process inputs/outputs in `round_def` use name strings (`"blue"`); game-state stock uses numeric string IDs (`"2"`). `MATERIAL_IDS` in `constants.ts` maps names → IDs for the supply row lookup.
 
 ### Known data quirks (round 21)

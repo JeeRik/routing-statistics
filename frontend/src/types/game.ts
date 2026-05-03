@@ -30,6 +30,7 @@ export interface RoundDefinition {
 
 export interface StationState {
   stock: Record<string, number>;
+  produced?: Record<string, number>;
 }
 
 export interface TruckState {

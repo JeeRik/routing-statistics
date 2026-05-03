@@ -23,6 +23,7 @@ class RoundDefinition(BaseModel):
 
 class StationState(BaseModel):
     stock: dict[str, int]
+    produced: dict[str, int] = {}
 
 
 class TruckState(BaseModel):

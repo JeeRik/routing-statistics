@@ -11,7 +11,7 @@ import ReactFlow, {
   type NodeChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { StationNode, type StationNodeData } from './StationNode';
+import { StationNode, type StationNodeData, type TruckBubble } from './StationNode';
 import { CustomEdge, type CustomEdgeData } from './CustomEdge';
 import type { GameState, LayoutData, RoundDefinition } from '../types/game';
 import { api } from '../api/client';
@@ -43,6 +43,19 @@ function circleLayout(letters: string[]): Record<string, { x: number; y: number 
   return positions;
 }
 
+function computeTrucksByLocation(gameState: GameState | null): Record<string, TruckBubble[]> {
+  if (!gameState) return {};
+  const result: Record<string, TruckBubble[]> = {};
+  for (const [truckId, truck] of Object.entries(gameState.trucks)) {
+    const materialId = truckId.split('-')[0];
+    const amount = truck.load[materialId] ?? 0;
+    if (amount === 0) continue;
+    if (!result[truck.location]) result[truck.location] = [];
+    result[truck.location].push({ id: truckId, materialId, amount });
+  }
+  return result;
+}
+
 function buildNodes(
   definition: RoundDefinition,
   positions: Record<string, { x: number; y: number }>,
@@ -55,6 +68,8 @@ function buildNodes(
     Object.entries(definition.materials).map(([name, m]) => [toId(name), (m as { capacity: number }).capacity]),
   );
   const showSupply = activeLayers.has('storage');
+  const showCargo = activeLayers.has('cargo');
+  const trucksByLocation = computeTrucksByLocation(gameState);
 
   return Object.entries(definition.routers).map(([letter, routerDef]) => {
     const procName = routerDef.processes[0];
@@ -77,6 +92,8 @@ function buildNodes(
         processDef,
         materialCapacities,
         showSupply,
+        trucks: trucksByLocation[letter] ?? [],
+        showCargo,
       },
     };
   });
@@ -184,20 +201,29 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers }: Pro
 
   // Update node data when gameState changes without resetting positions
   useEffect(() => {
+    const trucksByLocation = computeTrucksByLocation(gameState);
     setNodes((prev) =>
       prev.map((node) => ({
         ...node,
-        data: { ...node.data, state: gameState?.stations[node.id] },
+        data: {
+          ...node.data,
+          state: gameState?.stations[node.id],
+          trucks: trucksByLocation[node.id] ?? [],
+        },
       })),
     );
   }, [gameState, setNodes]);
 
-  // Toggle supply row when activeLayers changes
+  // Toggle supply/cargo rows when activeLayers changes
   useEffect(() => {
     setNodes((prev) =>
       prev.map((node) => ({
         ...node,
-        data: { ...node.data, showSupply: activeLayers.has('storage') },
+        data: {
+          ...node.data,
+          showSupply: activeLayers.has('storage'),
+          showCargo: activeLayers.has('cargo'),
+        },
       })),
     );
   }, [activeLayers, setNodes]);

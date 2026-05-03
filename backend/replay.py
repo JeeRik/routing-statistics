@@ -7,6 +7,7 @@ def compute_state(events: list[dict], round_start_ms: int, time_ms: int) -> Game
     and return the derived game state.
     """
     stations: dict[str, dict[str, int]] = {}
+    produced: dict[str, dict[str, int]] = {}
     trucks: dict[str, dict] = {}
 
     for ev in events:
@@ -23,8 +24,13 @@ def compute_state(events: list[dict], round_start_ms: int, time_ms: int) -> Game
 
         if ev_type == "transEnd":
             router_storage = inner.get("routerStorage", {})
+            router_delta = inner.get("routerDelta", {})
             if router:
                 stations[router] = {str(k): v for k, v in router_storage.items()}
+                node_produced = produced.setdefault(router, {})
+                for mat_id, qty in router_delta.items():
+                    mat_key = str(mat_id)
+                    node_produced[mat_key] = node_produced.get(mat_key, 0) + qty
 
         elif ev_type == "card":
             card_id = inner.get("cardId", "")
@@ -39,7 +45,7 @@ def compute_state(events: list[dict], round_start_ms: int, time_ms: int) -> Game
                 }
 
     return GameState(
-        stations={k: StationState(stock=v) for k, v in stations.items()},
+        stations={k: StationState(stock=v, produced=produced.get(k, {})) for k, v in stations.items()},
         trucks={k: TruckState(location=v["location"], load=v["load"]) for k, v in trucks.items()},
         time_ms=time_ms,
     )

@@ -7,6 +7,7 @@ import { ReplayControls } from '../components/ReplayControls';
 
 const LAYERS = [
   { id: 'storage', label: 'Storage' },
+  { id: 'cargo',   label: 'Cargo'   },
   { id: 'taxed',   label: 'Taxed'   },
   { id: 'traffic', label: 'Traffic' },
 ] as const;

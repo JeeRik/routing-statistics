@@ -21,6 +21,18 @@ export function ReplayControls({ durationMs, timeMs, onTimeChange }: Props) {
   timeMsRef.current = timeMs;
 
   useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
+      e.preventDefault();
+      setPlaying((p) => !p);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
     if (!playing) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return;
