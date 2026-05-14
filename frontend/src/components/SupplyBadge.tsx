@@ -49,7 +49,6 @@ export function SupplyBadge({ materialId, count, nodeId, roundId, timeMs }: Prop
         ref={ref}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => { setPopupPos(null); setHistory(null); }}
-        title={`${name}: ${count}`}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
