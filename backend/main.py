@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, str(Path(__file__).parent))
 
 import db
-from models import GameState, LayoutData, RoundDefinition, RoundSummary
+from models import EdgeTraffic, GameState, LayoutData, RoundDefinition, RoundSummary, TrafficResponse
 from replay import compute_state
 
 app = FastAPI(title="routing-statistics")
@@ -121,6 +121,55 @@ def get_storage_history(round_id: int, node: str, mat_id: str, time_ms: int = 0)
             "card_id": inner.get("cardId", "?"),
         })
     return entries
+
+
+@app.get("/api/round/{round_id}/traffic", response_model=TrafficResponse)
+def get_traffic(round_id: int, time_ms: int = 0):
+    defn = db.get_round_definition(round_id)
+    if not defn:
+        raise HTTPException(status_code=404, detail="Round not found")
+    round_start_time = defn.get("round_start_time")
+    if round_start_time is None:
+        return TrafficResponse(edges={})
+
+    round_start_ms = int(round_start_time * 1000)
+    known_stations = set(defn.get("routers", {}).keys())
+    cutoff = round_start_ms + time_ms
+
+    # Group card events at known stations by cardId
+    trucks: dict[str, list[dict]] = {}
+    for ev in _get_events_cached(round_id):
+        if ev["_ts"] > cutoff:
+            break
+        inner = ev.get("event", {})
+        if inner.get("type") != "card":
+            continue
+        router = ev.get("router", "")
+        if router not in known_stations:
+            continue
+        card_id = inner.get("cardId", "")
+        if card_id not in trucks:
+            trucks[card_id] = []
+        trucks[card_id].append({"router": router, "cardStorage": inner.get("cardStorage", {})})
+
+    # Walk consecutive station pairs to infer edge traversals
+    edge_goods: dict[str, int] = {}
+    edge_trips: dict[str, int] = {}
+    for events in trucks.values():
+        for i in range(1, len(events)):
+            prev, curr = events[i - 1], events[i]
+            if prev["router"] == curr["router"]:
+                continue
+            key = prev["router"] + curr["router"]
+            goods = sum(prev["cardStorage"].values())
+            edge_goods[key] = edge_goods.get(key, 0) + goods
+            edge_trips[key] = edge_trips.get(key, 0) + 1
+
+    edges = {
+        key: EdgeTraffic(goods=edge_goods[key], trips=edge_trips[key])
+        for key in edge_goods
+    }
+    return TrafficResponse(edges=edges)
 
 
 @app.get("/api/layout/{round_id}", response_model=LayoutData)

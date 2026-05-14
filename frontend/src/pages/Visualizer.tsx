@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/client';
-import type { GameState, RoundDefinition } from '../types/game';
+import type { GameState, RoundDefinition, TrafficResponse } from '../types/game';
 import { NetworkMap } from '../components/NetworkMap';
 import { ReplayControls } from '../components/ReplayControls';
 
@@ -13,6 +13,7 @@ const LAYERS = [
 ] as const;
 
 type LayerId = (typeof LAYERS)[number]['id'];
+type TrafficMode = 'whole-game';
 
 export function Visualizer() {
   const { roundId: roundIdParam } = useParams<{ roundId: string }>();
@@ -23,6 +24,8 @@ export function Visualizer() {
   const [timeMs, setTimeMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [activeLayers, setActiveLayers] = useState<Set<LayerId>>(new Set(['storage']));
+  const [trafficMode] = useState<TrafficMode>('whole-game');
+  const [trafficData, setTrafficData] = useState<TrafficResponse | null>(null);
 
   useEffect(() => {
     if (!roundId) return;
@@ -47,6 +50,18 @@ export function Visualizer() {
     });
   };
 
+  // Fetch traffic data when the layer is active, debounced 200 ms
+  useEffect(() => {
+    if (!activeLayers.has('traffic') || !definition) {
+      setTrafficData(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      api.getTraffic(roundId, timeMs).then(setTrafficData).catch(console.error);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [activeLayers, timeMs, roundId, definition]);
+
   if (error) {
     return (
       <div style={{ padding: 32, color: '#d45500', fontFamily: 'monospace' }}>
@@ -54,6 +69,8 @@ export function Visualizer() {
       </div>
     );
   }
+
+  const trafficActive = activeLayers.has('traffic');
 
   return (
     <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
@@ -87,16 +104,52 @@ export function Visualizer() {
             {LAYERS.map(({ id, label }) => {
               const checked = activeLayers.has(id);
               return (
-                <label key={id} style={layerRow(checked)}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleLayer(id)}
-                    style={{ display: 'none' }}
-                  />
-                  <span style={checkbox(checked)} />
-                  <span style={{ fontSize: 13, userSelect: 'none' }}>{label}</span>
-                </label>
+                <div key={id}>
+                  <label style={layerRow(checked)}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleLayer(id)}
+                      style={{ display: 'none' }}
+                    />
+                    <span style={checkbox(checked)} />
+                    <span style={{ fontSize: 13, userSelect: 'none' }}>{label}</span>
+                  </label>
+
+                  {/* Traffic mode radio buttons */}
+                  {id === 'traffic' && trafficActive && (
+                    <div style={{ paddingLeft: 34, marginTop: 2, marginBottom: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {([
+                        { value: 'whole-game', label: 'Whole game', enabled: true },
+                        { value: 'last-20s',   label: 'Last 20 s',  enabled: false },
+                        { value: 'moving-avg', label: 'Moving avg', enabled: false },
+                      ] as const).map((opt) => (
+                        <label
+                          key={opt.value}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 7,
+                            fontSize: 11, fontFamily: 'monospace',
+                            color: opt.enabled ? '#8a9aaa' : '#3a4a5a',
+                            cursor: opt.enabled ? 'pointer' : 'default',
+                            padding: '3px 0',
+                            userSelect: 'none',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="traffic-mode"
+                            value={opt.value}
+                            checked={trafficMode === opt.value}
+                            disabled={!opt.enabled}
+                            onChange={() => { /* future modes */ }}
+                            style={{ accentColor: '#ffcc44', cursor: opt.enabled ? 'pointer' : 'default' }}
+                          />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -114,6 +167,7 @@ export function Visualizer() {
               gameState={gameState}
               activeLayers={activeLayers}
               timeMs={timeMs}
+              trafficData={trafficData}
             />
             {definition.duration > 0 && (
               <ReplayControls

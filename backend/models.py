@@ -51,3 +51,12 @@ class LayoutData(BaseModel):
     positions: dict[str, NodePosition] = {}
     edge_offsets: dict[str, EdgeOffset] = {}
     custom_name: str | None = None
+
+
+class EdgeTraffic(BaseModel):
+    goods: int
+    trips: int
+
+
+class TrafficResponse(BaseModel):
+    edges: dict[str, EdgeTraffic]

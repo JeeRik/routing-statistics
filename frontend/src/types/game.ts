@@ -71,3 +71,12 @@ export interface LayoutData {
   edge_offsets?: Record<string, EdgeOffset>;
   custom_name?: string;
 }
+
+export interface EdgeTraffic {
+  goods: number;
+  trips: number;
+}
+
+export interface TrafficResponse {
+  edges: Record<string, EdgeTraffic>;
+}

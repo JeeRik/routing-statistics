@@ -13,7 +13,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { StationNode, type StationNodeData, type TruckBubble } from './StationNode';
 import { CustomEdge, type CustomEdgeData } from './CustomEdge';
-import type { GameState, LayoutData, RoundDefinition } from '../types/game';
+import type { GameState, LayoutData, RoundDefinition, TrafficResponse } from '../types/game';
 import { api } from '../api/client';
 import { MATERIAL_IDS } from '../constants';
 
@@ -28,6 +28,7 @@ interface Props {
   gameState: GameState | null;
   activeLayers: Set<string>;
   timeMs: number;
+  trafficData?: TrafficResponse | null;
 }
 
 function circleLayout(letters: string[]): Record<string, { x: number; y: number }> {
@@ -131,7 +132,7 @@ function buildEdges(
     .filter((e): e is Edge<CustomEdgeData> => e !== null);
 }
 
-export function NetworkMap({ roundId, definition, gameState, activeLayers, timeMs }: Props) {
+export function NetworkMap({ roundId, definition, gameState, activeLayers, timeMs, trafficData }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState<StationNodeData>([]);
   const [edges, setEdges] = useEdgesState<CustomEdgeData>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -237,6 +238,29 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
       })),
     );
   }, [activeLayers, setNodes]);
+
+  // Update edge traffic highlights when trafficData changes
+  useEffect(() => {
+    const showTraffic = activeLayers.has('traffic');
+    if (!showTraffic || !trafficData) {
+      setEdges((prev) => prev.map((e) => ({
+        ...e,
+        data: { ...(e.data as CustomEdgeData), showTraffic: false },
+      })));
+      return;
+    }
+    const maxGoods = Math.max(1, ...Object.values(trafficData.edges).map((t) => t.goods));
+    setEdges((prev) => prev.map((e) => ({
+      ...e,
+      data: {
+        ...(e.data as CustomEdgeData),
+        trafficFwd: trafficData.edges[e.source + e.target] ?? null,
+        trafficBwd: trafficData.edges[e.target + e.source] ?? null,
+        maxGoods,
+        showTraffic: true,
+      },
+    })));
+  }, [trafficData, activeLayers, setEdges]);
 
   const onNodesChangeWithSave = useCallback(
     (changes: NodeChange[]) => {

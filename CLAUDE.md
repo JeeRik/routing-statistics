@@ -55,7 +55,7 @@ routing-statistics/
 │       ├── components/
 │       │   ├── AppHeader.tsx          # Persistent header with nav link to /rounds
 │       │   ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid (fixed 160 px)
-│       │   ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges
+│       │   ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges; renders animated traffic highlights when Traffic layer is active
 │       │   ├── StationNode.tsx        # Node with supply/cargo rows + process popover (fixed width 105 px)
 │       │   ├── SupplyBadge.tsx        # Storage badge: solid material-color border, black→color fill bottom-to-top (max at 30); hover shows delivery history popup
 │       │   ├── TruckBadge.tsx         # Fill-level-aware truck bubble (cargo row, capacity 5); hover shows full scan-history popup
@@ -80,6 +80,7 @@ routing-statistics/
 | GET | `/api/round/{id}/state?time_ms=N` | Computed game state at time N |
 | GET | `/api/round/{id}/truck/{card_id}/history?time_ms=N` | Scan history for one truck up to time N — `[{time_ms, node, cargo}]` |
 | GET | `/api/round/{id}/node/{node}/material/{mat_id}/history?time_ms=N` | Delivery history for one material at one node up to time N — `[{time_ms, delta, card_id}]` (card events where routerDelta > 0) |
+| GET | `/api/round/{id}/traffic?time_ms=N` | Goods and trips per directed edge up to time N — `{"edges": {"AB": {"goods": N, "trips": M}, ...}}` |
 | GET | `/api/layout/{id}` | Load saved layout (404 if none) |
 | POST | `/api/layout/{id}` | Save layout — **merge** with existing file, not overwrite |
 
@@ -118,7 +119,8 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 - **Edge drag:** grab anywhere on an arc to reshape it (quadratic bezier, offset stored as `{ox, oy}` from midpoint)
 - **Node snap:** hold **Ctrl** while dragging a node to snap to a fixed 160 px grid; a banner confirms when active
 - **Node anchor:** edges connect at horizontal center + middle of the letter row (18px from top). Nodes have fixed width (105 px) so the anchor is stable during replay.
-- **Layer toggles:** Storage shows a supply row (inputs left, output right). Cargo shows truck bubbles (non-empty trucks at each station, ≤4 per row). Taxed / Traffic are wired up but not yet functional.
+- **Layer toggles:** Storage shows a supply row (inputs left, output right). Cargo shows truck bubbles (non-empty trucks at each station, ≤4 per row). Taxed is wired up but not yet functional.
+- **Traffic layer:** when enabled, each directed edge shows an animated highlight strip to the right of the arc in the direction of travel. Width scales with total goods transported (normalized to the busiest edge). The strip renders an orange→yellow→orange gradient animated with SMIL `animateTransform` (60 px period, 1.2 s cycle) so the pattern flows in the direction of traffic. Both directions of a bidirectional edge are shown simultaneously as two strips, one on each side. Hover shows a popup with goods and trip counts. Under the Traffic checkbox, a radio group selects the aggregation mode; only **Whole game** (cumulative goods up to current `time_ms`) is implemented — Last 20 s and Moving avg are greyed out.
 - **Supply badges:** solid border in the material's color; background fills from black (0 items) to full material color (30 items) bottom-to-top via a sharp CSS gradient; glow when count > 30. Hover fetches `/api/round/{id}/node/{node}/material/{matId}/history?time_ms=N` and shows a portal popup with header `Node : Color` and one delivery line per truck scan (`mm:ss : +N : card_id`).
 - **Process popover:** hovering the letter/name area of a node shows a portal-rendered tooltip (above all ReactFlow nodes) with the factory recipe and cumulative items produced at current replay time.
 - **Truck history popup:** hovering a truck bubble fetches `/api/round/{id}/truck/{cardId}/history?time_ms=N` and shows a portal popup with header `Card Id: <id> : <colour>` and one log line per scan (`mm:ss : node : cargo`), including zero-cargo hops. Scrollable, max 220 px tall.
