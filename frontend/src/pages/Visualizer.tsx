@@ -13,7 +13,7 @@ const LAYERS = [
 ] as const;
 
 type LayerId = (typeof LAYERS)[number]['id'];
-type TrafficMode = 'whole-game';
+type TrafficMode = 'whole-game' | 'last-20s' | 'last-60s';
 
 export function Visualizer() {
   const { roundId: roundIdParam } = useParams<{ roundId: string }>();
@@ -24,7 +24,7 @@ export function Visualizer() {
   const [timeMs, setTimeMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [activeLayers, setActiveLayers] = useState<Set<LayerId>>(new Set(['storage']));
-  const [trafficMode] = useState<TrafficMode>('whole-game');
+  const [trafficMode, setTrafficMode] = useState<TrafficMode>('whole-game');
   const [trafficData, setTrafficData] = useState<TrafficResponse | null>(null);
 
   useEffect(() => {
@@ -56,11 +56,14 @@ export function Visualizer() {
       setTrafficData(null);
       return;
     }
+    const fromMs = trafficMode === 'last-20s' ? Math.max(0, timeMs - 20_000)
+                 : trafficMode === 'last-60s' ? Math.max(0, timeMs - 60_000)
+                 : 0;
     const t = setTimeout(() => {
-      api.getTraffic(roundId, timeMs).then(setTrafficData).catch(console.error);
+      api.getTraffic(roundId, timeMs, fromMs).then(setTrafficData).catch(console.error);
     }, 200);
     return () => clearTimeout(t);
-  }, [activeLayers, timeMs, roundId, definition]);
+  }, [activeLayers, timeMs, trafficMode, roundId, definition]);
 
   if (error) {
     return (
@@ -120,17 +123,17 @@ export function Visualizer() {
                   {id === 'traffic' && trafficActive && (
                     <div style={{ paddingLeft: 34, marginTop: 2, marginBottom: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
                       {([
-                        { value: 'whole-game', label: 'Whole game', enabled: true },
-                        { value: 'last-20s',   label: 'Last 20 s',  enabled: false },
-                        { value: 'moving-avg', label: 'Moving avg', enabled: false },
+                        { value: 'whole-game', label: 'Whole game' },
+                        { value: 'last-60s',   label: 'Last 60 s'  },
+                        { value: 'last-20s',   label: 'Last 20 s'  },
                       ] as const).map((opt) => (
                         <label
                           key={opt.value}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 7,
                             fontSize: 11, fontFamily: 'monospace',
-                            color: opt.enabled ? '#8a9aaa' : '#3a4a5a',
-                            cursor: opt.enabled ? 'pointer' : 'default',
+                            color: '#8a9aaa',
+                            cursor: 'pointer',
                             padding: '3px 0',
                             userSelect: 'none',
                           }}
@@ -140,9 +143,8 @@ export function Visualizer() {
                             name="traffic-mode"
                             value={opt.value}
                             checked={trafficMode === opt.value}
-                            disabled={!opt.enabled}
-                            onChange={() => { /* future modes */ }}
-                            style={{ accentColor: '#ffcc44', cursor: opt.enabled ? 'pointer' : 'default' }}
+                            onChange={() => setTrafficMode(opt.value)}
+                            style={{ accentColor: '#ffcc44', cursor: 'pointer' }}
                           />
                           {opt.label}
                         </label>

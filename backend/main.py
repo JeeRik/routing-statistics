@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, str(Path(__file__).parent))
 
 import db
-from models import EdgeTraffic, GameState, LayoutData, RoundDefinition, RoundSummary, TrafficResponse
+from models import EdgeTraffic, GameState, LayoutData, MaterialTraffic, RoundDefinition, RoundSummary, TrafficResponse
 from replay import compute_state
 
 app = FastAPI(title="routing-statistics")
@@ -124,7 +124,7 @@ def get_storage_history(round_id: int, node: str, mat_id: str, time_ms: int = 0)
 
 
 @app.get("/api/round/{round_id}/traffic", response_model=TrafficResponse)
-def get_traffic(round_id: int, time_ms: int = 0):
+def get_traffic(round_id: int, time_ms: int = 0, from_ms: int = 0):
     defn = db.get_round_definition(round_id)
     if not defn:
         raise HTTPException(status_code=404, detail="Round not found")
@@ -134,9 +134,10 @@ def get_traffic(round_id: int, time_ms: int = 0):
 
     round_start_ms = int(round_start_time * 1000)
     known_stations = set(defn.get("routers", {}).keys())
-    cutoff = round_start_ms + time_ms
+    cutoff   = round_start_ms + time_ms
+    window_start = round_start_ms + from_ms  # trips arriving before this are excluded
 
-    # Group card events at known stations by cardId
+    # Group card events at known stations by cardId, storing arrival timestamp
     trucks: dict[str, list[dict]] = {}
     for ev in _get_events_cached(round_id):
         if ev["_ts"] > cutoff:
@@ -150,23 +151,41 @@ def get_traffic(round_id: int, time_ms: int = 0):
         card_id = inner.get("cardId", "")
         if card_id not in trucks:
             trucks[card_id] = []
-        trucks[card_id].append({"router": router, "cardStorage": inner.get("cardStorage", {})})
+        trucks[card_id].append({"router": router, "cardStorage": inner.get("cardStorage", {}), "ts": ev["_ts"]})
 
     # Walk consecutive station pairs to infer edge traversals
     edge_goods: dict[str, int] = {}
     edge_trips: dict[str, int] = {}
+    edge_mat_goods: dict[str, dict[str, int]] = {}
+    edge_mat_trips: dict[str, dict[str, int]] = {}
     for events in trucks.values():
         for i in range(1, len(events)):
             prev, curr = events[i - 1], events[i]
             if prev["router"] == curr["router"]:
                 continue
+            if curr["ts"] < window_start:  # trip completed before the window — skip
+                continue
             key = prev["router"] + curr["router"]
             goods = sum(prev["cardStorage"].values())
             edge_goods[key] = edge_goods.get(key, 0) + goods
             edge_trips[key] = edge_trips.get(key, 0) + 1
+            mat_goods = edge_mat_goods.setdefault(key, {})
+            mat_trips = edge_mat_trips.setdefault(key, {})
+            for mat_id, qty in prev["cardStorage"].items():
+                m = str(mat_id)
+                if qty > 0:
+                    mat_goods[m] = mat_goods.get(m, 0) + qty
+                    mat_trips[m] = mat_trips.get(m, 0) + 1
 
     edges = {
-        key: EdgeTraffic(goods=edge_goods[key], trips=edge_trips[key])
+        key: EdgeTraffic(
+            goods=edge_goods[key],
+            trips=edge_trips[key],
+            by_material={
+                m: MaterialTraffic(goods=g, trips=edge_mat_trips[key].get(m, 0))
+                for m, g in edge_mat_goods.get(key, {}).items()
+            },
+        )
         for key in edge_goods
     }
     return TrafficResponse(edges=edges)

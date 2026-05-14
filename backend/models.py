@@ -53,9 +53,15 @@ class LayoutData(BaseModel):
     custom_name: str | None = None
 
 
+class MaterialTraffic(BaseModel):
+    goods: int
+    trips: int
+
+
 class EdgeTraffic(BaseModel):
     goods: int
     trips: int
+    by_material: dict[str, MaterialTraffic] = {}
 
 
 class TrafficResponse(BaseModel):

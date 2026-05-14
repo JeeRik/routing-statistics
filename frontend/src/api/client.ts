@@ -25,8 +25,8 @@ export const api = {
     get<TruckHistoryEntry[]>(`/api/round/${roundId}/truck/${cardId}/history?time_ms=${timeMs}`),
   getStorageHistory: (roundId: number, node: string, matId: string, timeMs: number) =>
     get<StorageHistoryEntry[]>(`/api/round/${roundId}/node/${node}/material/${matId}/history?time_ms=${timeMs}`),
-  getTraffic: (roundId: number, timeMs: number) =>
-    get<TrafficResponse>(`/api/round/${roundId}/traffic?time_ms=${timeMs}`),
+  getTraffic: (roundId: number, timeMs: number, fromMs = 0) =>
+    get<TrafficResponse>(`/api/round/${roundId}/traffic?time_ms=${timeMs}&from_ms=${fromMs}`),
   getLayout: (roundId: number) => get<LayoutData>(`/api/layout/${roundId}`),
   saveLayout: (roundId: number, layout: Partial<LayoutData>) =>
     post<{ ok: boolean }>(`/api/layout/${roundId}`, layout),

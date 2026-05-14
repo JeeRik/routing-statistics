@@ -3,6 +3,7 @@ import { useStore } from 'reactflow';
 import type { EdgeProps } from 'reactflow';
 import ReactDOM from 'react-dom';
 import type { EdgeTraffic } from '../types/game';
+import { MATERIAL_COLORS } from '../constants';
 
 export interface CustomEdgeData {
   offsetX: number;
@@ -41,17 +42,26 @@ function TrafficStrip({
 
   const ratio = Math.min(traffic.goods / Math.max(maxGoods, 1), 1);
   const strokeWidth = 2 + ratio * MAX_EXTRA_WIDTH;
+  const maxStrokeWidth = 2 + MAX_EXTRA_WIDTH;
 
-  const d = MAIN_EDGE_HALF + strokeWidth / 2;
-  const px = perp.x * d * sign;
-  const py = perp.y * d * sign;
-
+  // Visual strip — offset by actual width
+  const d    = MAIN_EDGE_HALF + strokeWidth / 2;
+  const px   = perp.x * d * sign;
+  const py   = perp.y * d * sign;
   const path = `M ${sx + px} ${sy + py} Q ${cx + px} ${cy + py} ${tx + px} ${ty + py}`;
+
+  // Hit area — always at max-width position so narrow strips are easy to hover
+  const dHit    = MAIN_EDGE_HALF + maxStrokeWidth / 2;
+  const pxHit   = perp.x * dHit * sign;
+  const pyHit   = perp.y * dHit * sign;
+  const hitPath = `M ${sx + pxHit} ${sy + pyHit} Q ${cx + pxHit} ${cy + pyHit} ${tx + pxHit} ${ty + pyHit}`;
+
   const from = forward ? source : target;
   const to   = forward ? target : source;
 
   return (
     <>
+      {/* Visible strip — no pointer events */}
       <path
         d={path}
         stroke={`url(#${gradientId})`}
@@ -59,6 +69,14 @@ function TrafficStrip({
         strokeOpacity={0.9}
         fill="none"
         strokeLinecap="round"
+        style={{ pointerEvents: 'none' }}
+      />
+      {/* Transparent hit area — always max width */}
+      <path
+        d={hitPath}
+        stroke="transparent"
+        strokeWidth={maxStrokeWidth}
+        fill="none"
         style={{ cursor: 'default', pointerEvents: 'stroke' }}
         onMouseEnter={(e) => { setHover(true); setMousePos({ x: e.clientX, y: e.clientY }); }}
         onMouseLeave={() => setHover(false)}
@@ -81,10 +99,34 @@ function TrafficStrip({
           whiteSpace: 'nowrap',
           lineHeight: 1.6,
         }}>
-          <div style={{ color: TRAFFIC_ORANGE, fontWeight: 700, marginBottom: 2 }}>
+          <div style={{ color: TRAFFIC_ORANGE, fontWeight: 700, marginBottom: 6 }}>
             {from} → {to}
           </div>
-          <div>{traffic.goods} goods · {traffic.trips} trips</div>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <tbody>
+              {Object.entries(traffic.by_material)
+                .sort(([a], [b]) => Number(a) - Number(b))
+                .map(([matId, mat]) => (
+                  <tr key={matId}>
+                    <td style={{ paddingRight: 8, paddingBottom: 3 }}>
+                      <div style={{
+                        width: 12, height: 12,
+                        background: MATERIAL_COLORS[matId] ?? '#888',
+                        borderRadius: 2,
+                        border: '1px solid rgba(255,255,255,0.15)',
+                      }} />
+                    </td>
+                    <td style={{ paddingRight: 12, paddingBottom: 3, textAlign: 'right', color: '#8a9aaa' }}>
+                      {mat.trips}
+                    </td>
+                    <td style={{ paddingBottom: 3, textAlign: 'right' }}>
+                      {mat.goods}
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
         </div>,
         document.body,
       )}
@@ -191,7 +233,6 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
               <stop offset="0%"   stopColor={TRAFFIC_ORANGE} />
               <stop offset="50%"  stopColor={TRAFFIC_YELLOW} />
               <stop offset="100%" stopColor={TRAFFIC_ORANGE} />
-              {/* @ts-expect-error — SMIL animateTransform is valid SVG but not in React types */}
               <animateTransform attributeName="gradientTransform" type="translate"
                 from="0 0" to={fwdTo} dur={ANIM_DUR} repeatCount="indefinite" />
             </linearGradient>
@@ -205,7 +246,6 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
               <stop offset="0%"   stopColor={TRAFFIC_ORANGE} />
               <stop offset="50%"  stopColor={TRAFFIC_YELLOW} />
               <stop offset="100%" stopColor={TRAFFIC_ORANGE} />
-              {/* @ts-expect-error — SMIL animateTransform is valid SVG but not in React types */}
               <animateTransform attributeName="gradientTransform" type="translate"
                 from="0 0" to={bwdTo} dur={ANIM_DUR} repeatCount="indefinite" />
             </linearGradient>

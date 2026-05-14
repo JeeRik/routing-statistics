@@ -72,9 +72,15 @@ export interface LayoutData {
   custom_name?: string;
 }
 
+export interface MaterialTraffic {
+  goods: number;
+  trips: number;
+}
+
 export interface EdgeTraffic {
   goods: number;
   trips: number;
+  by_material: Record<string, MaterialTraffic>;
 }
 
 export interface TrafficResponse {
