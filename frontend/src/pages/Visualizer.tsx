@@ -1,9 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { DistributionResponse, GameState, RoundDefinition, TrafficResponse } from '../types/game';
-import { MATERIAL_COLORS } from '../constants';
+import { MATERIAL_IDS } from '../constants';
 import { NetworkMap } from '../components/NetworkMap';
+import { MaterialPicker } from '../components/MaterialPicker';
+import type { MaterialLink } from '../components/MaterialPicker';
 import { ReplayControls } from '../components/ReplayControls';
 
 const LAYERS = [
@@ -13,18 +15,6 @@ const LAYERS = [
   { id: 'traffic',      label: 'Traffic'         },
 ] as const;
 
-// Materials A–I in production-chain order (J/rocket has no truck)
-const DIST_MATERIALS = [
-  { id: '2', label: 'Blue'   },
-  { id: '7', label: 'Yellow' },
-  { id: '8', label: 'Green'  },
-  { id: '1', label: 'Gray'   },
-  { id: '6', label: 'Orange' },
-  { id: '4', label: 'Pink'   },
-  { id: '5', label: 'Red'    },
-  { id: '3', label: 'Purple' },
-  { id: '9', label: 'Brown'  },
-];
 
 type LayerId = (typeof LAYERS)[number]['id'];
 type TrafficMode = 'whole-game' | 'last-20s' | 'last-60s';
@@ -43,6 +33,20 @@ export function Visualizer() {
   const [distMaterial, setDistMaterial] = useState<string>('2');
   const [distributionData, setDistributionData] = useState<DistributionResponse | null>(null);
   const [distTrafficData, setDistTrafficData] = useState<TrafficResponse | null>(null);
+
+  const materialLinks = useMemo((): MaterialLink[] => {
+    if (!definition) return [];
+    const toId = (name: string) => MATERIAL_IDS[name] ?? name;
+    const links: MaterialLink[] = [];
+    for (const proc of Object.values(definition.processes)) {
+      const outputs = Object.keys(proc.outputs).map(toId);
+      const inputs  = Object.keys(proc.inputs).map(toId);
+      for (const out of outputs)
+        for (const inp of inputs)
+          links.push({ input: inp, output: out });
+    }
+    return links;
+  }, [definition]);
 
   useEffect(() => {
     if (!roundId) return;
@@ -69,7 +73,7 @@ export function Visualizer() {
 
   // Fetch distribution node + edge data when the layer is active, debounced 200 ms
   useEffect(() => {
-    if (!activeLayers.has('distribution') || !definition) {
+    if (!activeLayers.has('distribution') || !definition || !distMaterial) {
       setDistributionData(null);
       setDistTrafficData(null);
       return;
@@ -150,32 +154,28 @@ export function Visualizer() {
                     <span style={{ fontSize: 13, userSelect: 'none' }}>{label}</span>
                   </label>
 
-                  {/* Distribution material color picker */}
+                  {/* Distribution material color picker + None button */}
                   {id === 'distribution' && checked && (
-                    <div style={{ paddingLeft: 10, marginTop: 6, marginBottom: 4 }}>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(5, 1fr)',
-                        gap: 4,
-                      }}>
-                        {DIST_MATERIALS.map((m) => (
-                          <button
-                            key={m.id}
-                            title={m.label}
-                            onClick={() => setDistMaterial(m.id)}
-                            style={{
-                              width: 22, height: 22,
-                              borderRadius: 4,
-                              background: MATERIAL_COLORS[m.id],
-                              border: distMaterial === m.id ? '2px solid #fff' : '2px solid transparent',
-                              cursor: 'pointer',
-                              padding: 0,
-                              transform: distMaterial === m.id ? 'scale(1.15)' : 'scale(1)',
-                              transition: 'transform 0.1s, border-color 0.1s',
-                            }}
-                          />
-                        ))}
-                      </div>
+                    <div style={{ paddingLeft: 10, marginTop: 6, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <MaterialPicker value={distMaterial} onChange={setDistMaterial} links={materialLinks} />
+                      <button
+                        title="None"
+                        onClick={() => setDistMaterial('')}
+                        style={{
+                          background: distMaterial === '' ? 'rgba(255,255,255,0.08)' : 'transparent',
+                          border: `2px solid ${distMaterial === '' ? '#fff' : 'transparent'}`,
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          padding: 6,
+                          color: '#d40000',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          alignSelf: 'center',
+                        }}
+                      >
+                        <span className="material-icons" style={{ fontSize: 20, lineHeight: 1 }}>block</span>
+                      </button>
                     </div>
                   )}
 
@@ -231,7 +231,7 @@ export function Visualizer() {
               timeMs={timeMs}
               trafficData={trafficData}
               distributionData={distributionData}
-              distMaterial={activeLayers.has('distribution') ? distMaterial : null}
+              distMaterial={distMaterial}
               distTrafficData={distTrafficData}
             />
             {definition.duration > 0 && (

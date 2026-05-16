@@ -20,18 +20,19 @@ export interface CustomEdgeData {
   distMaterialId?: string;
 }
 
-const TRAFFIC_COLOR   = '#8a9aaa'; // grey base for traffic highlights
-const MAIN_EDGE_HALF  = 1;   // half of the 2px main arc stroke
-const MAX_EXTRA_WIDTH = 8;
-const GRAD_PERIOD     = 60;  // px — one orange→yellow→orange cycle
-const ANIM_DUR        = '1.2s';
+const TRAFFIC_COLOR      = '#8a9aaa'; // grey base for traffic highlights
+const MAIN_EDGE_HALF     = 1;   // half of the 2px main arc stroke
+const MAX_EXTRA_WIDTH    = 8;
+const GRAD_PERIOD        = 60;  // px — one orange→yellow→orange cycle
+const ANIM_DUR           = '1.2s';
+const SNAP_STRAIGHT_DIST = 12;  // px in graph coords — perpendicular threshold to snap straight
 
 function TrafficStrip({
   sx, sy, cx, cy, tx, ty,
   perp, sign,
   traffic, maxGoods,
   source, target, forward,
-  gradientId, labelColor,
+  gradientId, labelColor, onMouseDown,
 }: {
   sx: number; sy: number; cx: number; cy: number; tx: number; ty: number;
   perp: { x: number; y: number };
@@ -41,6 +42,7 @@ function TrafficStrip({
   source: string; target: string; forward: boolean;
   gradientId: string;
   labelColor?: string;
+  onMouseDown?: (e: React.MouseEvent<SVGPathElement>) => void;
 }) {
   const [hover, setHover] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -86,6 +88,7 @@ function TrafficStrip({
         onMouseEnter={(e) => { setHover(true); setMousePos({ x: e.clientX, y: e.clientY }); }}
         onMouseLeave={() => setHover(false)}
         onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+        onMouseDown={onMouseDown}
       />
       {hover && ReactDOM.createPortal(
         <div style={{
@@ -150,6 +153,8 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
   const dataRef = useRef(data);
   dataRef.current = data;
 
+  const perpRef = useRef({ x: 0, y: 0 });
+
   const startPos = useRef({ x: 0, y: 0 });
   const startOffset = useRef({ x: 0, y: 0 });
 
@@ -166,11 +171,15 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
       const onMove = (me: MouseEvent) => {
         const dx = (me.clientX - startPos.current.x) / zoomRef.current;
         const dy = (me.clientY - startPos.current.y) / zoomRef.current;
-        dataRef.current?.onControlChange(
-          id,
-          startOffset.current.x + dx,
-          startOffset.current.y + dy,
-        );
+        let ox = startOffset.current.x + dx;
+        let oy = startOffset.current.y + dy;
+        // Snap to straight: control point is at mid + 2*(ox,oy), so perp dist = 2*|perp·(ox,oy)|
+        const p = perpRef.current;
+        if (Math.abs(2 * (p.x * ox + p.y * oy)) < SNAP_STRAIGHT_DIST) {
+          ox = 0;
+          oy = 0;
+        }
+        dataRef.current?.onControlChange(id, ox, oy);
       };
 
       const onUp = () => {
@@ -208,6 +217,7 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
   const ddy = ty - sy;
   const len = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
   const perp = { x: -ddy / len, y: ddx / len };
+  perpRef.current = perp;
 
   // Unit vector along path (source → target)
   const ux = ddx / len;
@@ -297,49 +307,7 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
         );
       })()}
 
-      {/* Traffic highlights — behind the main arc */}
-      {showTraffic && trafficFwd && trafficFwd.goods > 0 && (
-        <TrafficStrip
-          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
-          perp={perp} sign={1}
-          traffic={trafficFwd} maxGoods={maxGoods}
-          source={source} target={target} forward={true}
-          gradientId={fwdGradId} labelColor={TRAFFIC_COLOR}
-        />
-      )}
-      {showTraffic && trafficBwd && trafficBwd.goods > 0 && (
-        <TrafficStrip
-          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
-          perp={perp} sign={-1}
-          traffic={trafficBwd} maxGoods={maxGoods}
-          source={source} target={target} forward={false}
-          gradientId={bwdGradId} labelColor={TRAFFIC_COLOR}
-        />
-      )}
-
-      {/* Distribution highlights — material-specific strips */}
-      {showDist && distFwd && distFwd.goods > 0 && (
-        <TrafficStrip
-          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
-          perp={perp} sign={1}
-          traffic={{ goods: distFwd.goods, trips: distFwd.trips, by_material: { [distMatId]: distFwd } }}
-          maxGoods={distMaxGoods}
-          source={source} target={target} forward={true}
-          gradientId={dfwdGradId} labelColor={MATERIAL_COLORS[distMatId]}
-        />
-      )}
-      {showDist && distBwd && distBwd.goods > 0 && (
-        <TrafficStrip
-          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
-          perp={perp} sign={-1}
-          traffic={{ goods: distBwd.goods, trips: distBwd.trips, by_material: { [distMatId]: distBwd } }}
-          maxGoods={distMaxGoods}
-          source={source} target={target} forward={false}
-          gradientId={dbwdGradId} labelColor={MATERIAL_COLORS[distMatId]}
-        />
-      )}
-
-      {/* Wide invisible hit area — the draggable surface */}
+      {/* Wide invisible hit area — the draggable surface (below strips in z-order) */}
       <path
         d={path}
         stroke="transparent"
@@ -350,6 +318,52 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
       />
       {/* Visible arc */}
       <path d={path} stroke="#4a6070" strokeWidth={2} fill="none" style={{ pointerEvents: 'none' }} />
+
+      {/* Traffic highlights — above drag hit area so their popup wins on overlap */}
+      {showTraffic && trafficFwd && trafficFwd.goods > 0 && (
+        <TrafficStrip
+          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
+          perp={perp} sign={1}
+          traffic={trafficFwd} maxGoods={maxGoods}
+          source={source} target={target} forward={true}
+          gradientId={fwdGradId} labelColor={TRAFFIC_COLOR}
+          onMouseDown={handleMouseDown}
+        />
+      )}
+      {showTraffic && trafficBwd && trafficBwd.goods > 0 && (
+        <TrafficStrip
+          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
+          perp={perp} sign={-1}
+          traffic={trafficBwd} maxGoods={maxGoods}
+          source={source} target={target} forward={false}
+          gradientId={bwdGradId} labelColor={TRAFFIC_COLOR}
+          onMouseDown={handleMouseDown}
+        />
+      )}
+
+      {/* Distribution highlights — above drag hit area */}
+      {showDist && distFwd && distFwd.goods > 0 && (
+        <TrafficStrip
+          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
+          perp={perp} sign={1}
+          traffic={{ goods: distFwd.goods, trips: distFwd.trips, by_material: { [distMatId]: distFwd } }}
+          maxGoods={distMaxGoods}
+          source={source} target={target} forward={true}
+          gradientId={dfwdGradId} labelColor={MATERIAL_COLORS[distMatId]}
+          onMouseDown={handleMouseDown}
+        />
+      )}
+      {showDist && distBwd && distBwd.goods > 0 && (
+        <TrafficStrip
+          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
+          perp={perp} sign={-1}
+          traffic={{ goods: distBwd.goods, trips: distBwd.trips, by_material: { [distMatId]: distBwd } }}
+          maxGoods={distMaxGoods}
+          source={source} target={target} forward={false}
+          gradientId={dbwdGradId} labelColor={MATERIAL_COLORS[distMatId]}
+          onMouseDown={handleMouseDown}
+        />
+      )}
     </g>
   );
 }

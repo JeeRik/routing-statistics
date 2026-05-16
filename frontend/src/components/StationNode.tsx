@@ -52,6 +52,21 @@ export interface StationNodeData {
   distTaxed?: number;
 }
 
+function tintBackground(materialId: string | undefined): string {
+  if (!materialId) return '#1e2530';
+  const hex = MATERIAL_COLORS[materialId];
+  if (!hex) return '#1e2530';
+  const br = 0x1e, bg = 0x25, bb = 0x30;
+  const mr = parseInt(hex.slice(1, 3), 16);
+  const mg = parseInt(hex.slice(3, 5), 16);
+  const mb = parseInt(hex.slice(5, 7), 16);
+  const t = 0.12;
+  const r = Math.round(br * (1 - t) + mr * t);
+  const g = Math.round(bg * (1 - t) + mg * t);
+  const b = Math.round(bb * (1 - t) + mb * t);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
 export function StationNode({ data }: NodeProps<StationNodeData>) {
   const nameRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
@@ -67,7 +82,7 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
     <div
       style={{
         position: 'relative',
-        background: '#1e2530',
+        background: tintBackground(data.processDef?.outputs[0]),
         border: '2px solid #3a4a5a',
         borderRadius: 8,
         padding: '6px 10px',

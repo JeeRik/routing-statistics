@@ -13,11 +13,13 @@ Reads NFC scan logs from a SQLite database and renders them as an interactive ne
 - **Replay** — scrub or play through a recorded game session; stock levels update on each station as you advance
 - **Supply layer** — Storage checkbox adds a row to every node showing factory inputs (left) and output (right); each badge has a solid material-color border with a bottom-to-top fill from black (empty) to full color (30 units); hover a badge to see the full delivery history (time · amount · truck card ID) up to the current replay time
 - **Cargo layer** — Cargo checkbox overlays truck bubbles on each station showing all non-empty trucks currently docked there (up to 4 per row); hover a bubble to see the truck's full scan history (time · node · cargo) up to the current replay time
-- **Distribution layer** — select one material from a 5×2 color picker; each node shows a summary row (⚙ produced for producers, 🚚 delivered / ⛔ taxed for consumers, ⛔ taxed for toll-only nodes); edges get an animated colored highlight scaled to the material's flow on that edge
+- **Distribution layer** — 3×3 material color picker (raw / tier-2 / tier-3 rows) with a None (⛔) option; each node shows a summary row (⚙ produced for producers, 🚚 delivered / ⛔ taxed for consumers, ⛔ taxed for toll-only nodes) and an edge highlight in the material's color; node backgrounds are tinted with the output material color
+- **Material graph panel** — always-visible bottom-right overlay showing the 3×3 color grid with SVG lines connecting input → output materials derived from the round definition; highlights the currently selected material
 - **Traffic layer** — animated grey highlight strips on every edge scaled to total goods transported; time-window selector (whole game / last 60 s / last 20 s); hover for a per-material breakdown table
 - **Process popover** — hover over a node's name to see its factory recipe (e.g. `[blue] + [yellow] → [gray]`) and how many items it has produced so far at the current replay time
 - **Sidebar** — round stats and layer toggles (Storage / Cargo / Distribution / Traffic)
 - **Grid snap** — hold Ctrl while dragging a node to snap to a 160 px grid
+- **Edge snap** — drag an arc; snaps to perfectly straight when within 12 px of the straight line
 - **Space to play/pause** — keyboard shortcut to toggle replay playback from anywhere on the page
 - **Persistent layout** — node positions, edge arc shapes, and custom round names are saved to `layout/<round_id>.json`
 

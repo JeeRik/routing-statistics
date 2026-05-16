@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   Panel,
   useNodesState,
   useEdgesState,
@@ -16,6 +15,8 @@ import { CustomEdge, type CustomEdgeData } from './CustomEdge';
 import type { DistributionResponse, GameState, LayoutData, RoundDefinition, TrafficResponse } from '../types/game';
 import { api } from '../api/client';
 import { MATERIAL_IDS } from '../constants';
+import { MaterialPicker } from './MaterialPicker';
+import type { MaterialLink } from './MaterialPicker';
 
 const NODE_TYPES = { station: StationNode };
 const EDGE_TYPES = { custom: CustomEdge };
@@ -150,6 +151,19 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
   const edgeOffsetsRef = useRef<Record<string, { ox: number; oy: number }>>({});
 
   const [snapActive, setSnapActive] = useState(false);
+
+  const materialLinks = useMemo((): MaterialLink[] => {
+    const toId = (name: string) => MATERIAL_IDS[name] ?? name;
+    const links: MaterialLink[] = [];
+    for (const proc of Object.values(definition.processes)) {
+      const outputs = Object.keys(proc.outputs).map(toId);
+      const inputs  = Object.keys(proc.inputs).map(toId);
+      for (const out of outputs)
+        for (const inp of inputs)
+          links.push({ input: inp, output: out });
+    }
+    return links;
+  }, [definition]);
 
   // Ctrl held → snap to grid
   useEffect(() => {
@@ -349,11 +363,16 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
       >
         <Background color="#2a3a4a" gap={20} />
         <Controls />
-        <MiniMap
-          nodeColor="#3a4a5a"
-          maskColor="rgba(0,0,0,0.4)"
-          style={{ background: '#1a2530' }}
-        />
+        <Panel position="bottom-right" style={{ margin: 8 }}>
+          <div style={{
+            background: '#151d28',
+            border: '1px solid #2a3a4a',
+            borderRadius: 6,
+            padding: 8,
+          }}>
+            <MaterialPicker value={distMaterial ?? ''} links={materialLinks} />
+          </div>
+        </Panel>
         {snapActive && (
           <Panel
             position="top-center"
