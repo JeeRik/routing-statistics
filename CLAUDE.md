@@ -52,20 +52,29 @@ routing-statistics/
 │       ├── main.tsx                   # Entry point; wraps App in BrowserRouter
 │       ├── api/client.ts              # Typed fetch wrappers
 │       ├── types/game.ts              # Shared TypeScript interfaces
+│       ├── constants.ts               # MATERIAL_COLORS, MATERIAL_IDS, MATERIAL_NAMES
+│       ├── data/
+│       │   └── processSets.ts         # Three predefined process sets (tier1, tier1_2, full); MATERIAL_NAME_COLORS; processOutputColor(); detectProcessSet()
 │       ├── components/
-│       │   ├── AppHeader.tsx          # Persistent header with nav link to /rounds
+│       │   ├── AppHeader.tsx          # Persistent header with nav links to /rounds and /topologies
 │       │   ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid (fixed 160 px); permanent MaterialPicker panel in bottom-right
 │       │   ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges; snaps to straight within 12 px; renders animated traffic/distribution highlights
 │       │   ├── StationNode.tsx        # Node with supply/cargo rows + process popover (fixed width 105 px); background tinted by output material color
+│       │   ├── TopologyCanvas.tsx     # ReactFlow editor canvas for topology editing; shift+drag to connect nodes; alt+click for process picker; ctrl+drag for grid snap
+│       │   ├── ProcessPicker.tsx      # Portal popup: 3×3 colored grid + rocket + none; opened by alt+click on a node in the topology editor
 │       │   ├── MaterialPicker.tsx     # Reusable 3×3 material color grid (tier-based layout) with SVG dependency-graph overlay; supports read-only mode
 │       │   ├── SupplyBadge.tsx        # Storage badge: solid material-color border, black→color fill bottom-to-top (max at 30); hover shows delivery history popup
 │       │   ├── TruckBadge.tsx         # Fill-level-aware truck bubble (cargo row, capacity 5); hover shows full scan-history popup
 │       │   └── ReplayControls.tsx     # Play/pause scrubber; Space bar toggles playback
 │       └── pages/
 │           ├── RoundsList.tsx         # /rounds — table of sessions with inline name editing
-│           └── Visualizer.tsx         # /visualize/:roundId — network map + replay
+│           ├── Visualizer.tsx         # /visualize/:roundId — network map + replay
+│           ├── TopologyList.tsx       # /topologies — table of saved topologies with edit/delete
+│           └── TopologyEditor.tsx     # /topology/new and /topology/:id/edit — sidebar + canvas editor; auto-saves 800 ms after last change
 ├── layout/
 │   └── <round_id>.json   # Persisted node positions + edge offsets + custom name
+├── topologies/
+│   └── <id>.json          # User-designed topology files (git-tracked); same schema as game round_def + editor_positions field
 ├── data/
 │   └── game-logs-2026-03-26.sqlite3   # committed to git
 └── dev.ps1                            # Stop/start both servers (PowerShell)
@@ -85,6 +94,11 @@ routing-statistics/
 | GET | `/api/round/{id}/distribution?time_ms=N&material_id=M` | Per-node delivered and taxed counts for material M up to time N — `{"nodes": {"A": {"delivered": N, "taxed": N}}}`. `delivered` = sum of abs(routerDelta) for card events where routerDelta < 0 (truck deposited); `taxed` = sum of linkDelta for card events where linkDelta > 0 (customs toll). |
 | GET | `/api/layout/{id}` | Load saved layout (404 if none) |
 | POST | `/api/layout/{id}` | Save layout — **merge** with existing file, not overwrite |
+| GET | `/api/topologies` | List all topology files — `[{id, name, station_count, link_count}]` |
+| GET | `/api/topology/{id}` | Load full topology JSON |
+| POST | `/api/topology/{id}` | Save (overwrite) topology JSON |
+| POST | `/api/topologies/new` | Create new topology — assigns next available integer ID, returns `TopologySummary` |
+| DELETE | `/api/topology/{id}` | Delete topology file |
 
 ### Layout file format
 
@@ -113,6 +127,9 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 | `/` | Redirects to `/rounds` |
 | `/rounds` | Table of all rounds — columns: ID, Name (editable), Topology, Events, Duration, Open |
 | `/visualize/:roundId` | Network map + replay for the selected round |
+| `/topologies` | List of user-designed topologies with edit/delete actions |
+| `/topology/new` | Topology editor — blank canvas; auto-creates file on first change |
+| `/topology/:topoId/edit` | Topology editor — loads existing topology from file |
 
 ### UI behaviours to know
 
@@ -130,6 +147,16 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 - **Truck history popup:** hovering a truck bubble fetches `/api/round/{id}/truck/{cardId}/history?time_ms=N` and shows a portal popup with header `Card Id: <id> : <colour>` and one log line per scan (`mm:ss : node : cargo`), including zero-cargo hops. Scrollable, max 220 px tall.
 - **Space bar:** toggles play/pause in `ReplayControls`; ignored when an input/select/textarea/button has focus.
 - **Material name ↔ ID mapping:** process inputs/outputs in `round_def` use name strings (`"blue"`); game-state stock uses numeric string IDs (`"2"`). `MATERIAL_IDS` in `constants.ts` maps names → IDs for the supply row lookup.
+
+### Topology editor behaviours
+
+- **Process sets:** three predefined sets in `processSets.ts` — `tier1` (blue/yellow/green raw), `tier1_2` (+ gray/orange/pink tier-2), `full` (all 10 including rocket). Switching sets remaps router processes, keeping any process whose name still exists in the new set or is `factory_rocket`.
+- **Auto-save:** changes to `topo` or `positions` start an 800 ms debounce timer; the first run after load is skipped. For new topologies the first auto-save calls `POST /api/topologies/new` and navigates to `/topology/:id/edit` (replace history). For existing topologies it calls `POST /api/topology/:id`. A "Saving…" / "Saved" indicator appears in the sidebar bottom.
+- **Node interactions:** click → select (sidebar shows label + process); alt+click → `ProcessPicker` popup at cursor; shift+drag node→node → bidirectional edge (both "AB" and "BA" added); ctrl+drag → move with 160 px grid snap; drag → free move; Delete key → remove selected node.
+- **Edge interactions:** drag arc → reshape (quadratic bezier, same as visualizer); shift+click edge → delete edge; shift+drag edge → no-op.
+- **ProcessPicker:** portal-rendered popup; 3×3 grid matching `MaterialPicker` tier layout (row 0 = brown/red/purple, row 1 = gray/pink/orange, row 2 = blue/yellow/green); cells dimmed when not in current process set; `factory_rocket` always available as a separate button; "none" clears the process. `factory_rocket` is auto-added to the topology's `processes` dict when selected.
+- **Connection line:** shift+drag from a node shows a dashed cyan SVG line (portal-rendered, `pointer-events: none`); start snaps to the source node center; end snaps to the center of any valid target node under the cursor.
+- **Topology storage:** `topologies/<id>.json` — same JSON schema as game `round_def` plus `editor_positions: { "<letter>": {x, y} }`. Edge arc offsets are not persisted (editor limitation). `_positions` must be `editor_positions` — Pydantic v2 treats underscore-prefixed fields as private.
 
 ### Known data quirks (round 21)
 

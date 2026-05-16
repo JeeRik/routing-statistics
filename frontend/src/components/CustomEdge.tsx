@@ -9,6 +9,7 @@ export interface CustomEdgeData {
   offsetX: number;
   offsetY: number;
   onControlChange: (edgeId: string, ox: number, oy: number) => void;
+  onDelete?: (edgeId: string) => void;
   trafficFwd?: EdgeTraffic | null;
   trafficBwd?: EdgeTraffic | null;
   maxGoods?: number;
@@ -162,6 +163,20 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
     (e: React.MouseEvent<SVGPathElement>) => {
       e.stopPropagation();
       e.preventDefault();
+
+      // Shift+click → delete edge (no arc drag)
+      if (e.shiftKey) {
+        const downX = e.clientX;
+        const downY = e.clientY;
+        const onUp = (ue: MouseEvent) => {
+          const d = Math.sqrt((ue.clientX - downX) ** 2 + (ue.clientY - downY) ** 2);
+          if (d < 6) dataRef.current?.onDelete?.(id);
+          document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mouseup', onUp);
+        return;
+      }
+
       startPos.current = { x: e.clientX, y: e.clientY };
       startOffset.current = {
         x: dataRef.current?.offsetX ?? 0,

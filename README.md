@@ -22,6 +22,7 @@ Reads NFC scan logs from a SQLite database and renders them as an interactive ne
 - **Edge snap** — drag an arc; snaps to perfectly straight when within 12 px of the straight line
 - **Space to play/pause** — keyboard shortcut to toggle replay playback from anywhere on the page
 - **Persistent layout** — node positions, edge arc shapes, and custom round names are saved to `layout/<round_id>.json`
+- **Topology editor** — `/topologies` lists all saved topologies; `/topology/new` or `/topology/:id/edit` opens a full canvas editor to design station networks from scratch: drag-and-drop nodes, shift-drag to connect, alt-click to assign a process, ctrl-drag to snap to grid; changes auto-save with an 800 ms debounce; topologies stored as JSON files in `topologies/` and versioned in git
 
 ---
 
@@ -91,3 +92,9 @@ Update the path in [`backend/db.py`](backend/db.py) if the filename differs.
 ## Layout files
 
 Node positions, edge arc offsets, and custom round names are stored in `layout/<round_id>.json`. These files are committed so layouts survive a fresh clone.
+
+---
+
+## Topology files
+
+User-designed topologies are stored in `topologies/<id>.json` (same JSON schema as the game's `round_def`). These files are git-tracked. The editor assigns integer IDs (max existing + 1, starting at 1) independently of game round IDs.

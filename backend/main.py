@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, str(Path(__file__).parent))
 
 import db
-from models import DistributionResponse, EdgeTraffic, GameState, LayoutData, MaterialTraffic, NodeDistribution, RoundDefinition, RoundSummary, TrafficResponse
+from models import DistributionResponse, EdgeTraffic, GameState, LayoutData, MaterialTraffic, NodeDistribution, RoundDefinition, RoundSummary, TopologyData, TopologySummary, TrafficResponse
 from replay import compute_state
 
 app = FastAPI(title="routing-statistics")
@@ -23,6 +23,9 @@ app.add_middleware(
 
 LAYOUT_DIR = Path(__file__).parent.parent / "layout"
 LAYOUT_DIR.mkdir(exist_ok=True)
+
+TOPOLOGY_DIR = Path(__file__).parent.parent / "topologies"
+TOPOLOGY_DIR.mkdir(exist_ok=True)
 
 # Cache events per round to avoid re-reading from DB on every /state request
 _event_cache: dict[int, list[dict]] = {}
@@ -254,6 +257,64 @@ def save_layout(round_id: int, layout: LayoutData):
     # doesn't erase the custom name and saving a name doesn't erase positions.
     incoming = layout.model_dump(exclude_unset=True)
     layout_file.write_text(json.dumps({**existing, **incoming}))
+    return {"ok": True}
+
+
+@app.get("/api/topologies", response_model=list[TopologySummary])
+def list_topologies():
+    result = []
+    for f in sorted(TOPOLOGY_DIR.glob("*.json")):
+        try:
+            data = json.loads(f.read_text())
+            topo_id = int(f.stem)
+            result.append(TopologySummary(
+                id=topo_id,
+                name=data.get("roundName", f.stem),
+                station_count=len(data.get("routers", {})),
+                link_count=len(data.get("links", [])),
+            ))
+        except (ValueError, KeyError):
+            pass
+    return result
+
+
+@app.get("/api/topology/{topo_id}", response_model=TopologyData)
+def get_topology(topo_id: int):
+    topo_file = TOPOLOGY_DIR / f"{topo_id}.json"
+    if not topo_file.exists():
+        raise HTTPException(status_code=404, detail="Topology not found")
+    return json.loads(topo_file.read_text())
+
+
+@app.post("/api/topology/{topo_id}")
+def save_topology(topo_id: int, topo: TopologyData):
+    topo_file = TOPOLOGY_DIR / f"{topo_id}.json"
+    topo_file.write_text(json.dumps(topo.model_dump(), indent=2))
+    return {"ok": True}
+
+
+@app.post("/api/topologies/new", response_model=TopologySummary)
+def create_topology(topo: TopologyData):
+    existing_ids = [int(f.stem) for f in TOPOLOGY_DIR.glob("*.json") if f.stem.isdigit()]
+    new_id = max(existing_ids, default=0) + 1
+    topo_data = topo.model_dump()
+    topo_data["roundId"] = new_id
+    topo_file = TOPOLOGY_DIR / f"{new_id}.json"
+    topo_file.write_text(json.dumps(topo_data, indent=2))
+    return TopologySummary(
+        id=new_id,
+        name=topo_data.get("roundName", str(new_id)),
+        station_count=len(topo_data.get("routers", {})),
+        link_count=len(topo_data.get("links", [])),
+    )
+
+
+@app.delete("/api/topology/{topo_id}")
+def delete_topology(topo_id: int):
+    topo_file = TOPOLOGY_DIR / f"{topo_id}.json"
+    if not topo_file.exists():
+        raise HTTPException(status_code=404, detail="Topology not found")
+    topo_file.unlink()
     return {"ok": True}
 
 

@@ -95,3 +95,22 @@ export interface NodeDistribution {
 export interface DistributionResponse {
   nodes: Record<string, NodeDistribution>;
 }
+
+export interface TopologySummary {
+  id: number;
+  name: string;
+  station_count: number;
+  link_count: number;
+}
+
+export interface TopologyData {
+  roundId: number;
+  roundName: string;
+  duration: number;
+  processes: Record<string, ProcessDef>;
+  materials: Record<string, { capacity: number }>;
+  routers: Record<string, RouterDef>;
+  links: string[];
+  events: unknown[];
+  editor_positions?: Record<string, NodePosition>;
+}

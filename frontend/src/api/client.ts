@@ -1,4 +1,4 @@
-import type { DistributionResponse, GameState, LayoutData, RoundDefinition, RoundSummary, StorageHistoryEntry, TrafficResponse, TruckHistoryEntry } from '../types/game';
+import type { DistributionResponse, GameState, LayoutData, RoundDefinition, RoundSummary, StorageHistoryEntry, TopologyData, TopologySummary, TrafficResponse, TruckHistoryEntry } from '../types/game';
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
@@ -32,4 +32,14 @@ export const api = {
   getLayout: (roundId: number) => get<LayoutData>(`/api/layout/${roundId}`),
   saveLayout: (roundId: number, layout: Partial<LayoutData>) =>
     post<{ ok: boolean }>(`/api/layout/${roundId}`, layout),
+  getTopologies: () => get<TopologySummary[]>('/api/topologies'),
+  getTopology: (id: number) => get<TopologyData>(`/api/topology/${id}`),
+  saveTopology: (id: number, topo: TopologyData) =>
+    post<{ ok: boolean }>(`/api/topology/${id}`, topo),
+  createTopology: (topo: TopologyData) =>
+    post<TopologySummary>('/api/topologies/new', topo),
+  deleteTopology: async (id: number): Promise<void> => {
+    const res = await fetch(`/api/topology/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText} — DELETE /api/topology/${id}`);
+  },
 };

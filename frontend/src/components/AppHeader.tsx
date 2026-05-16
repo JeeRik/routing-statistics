@@ -22,6 +22,17 @@ export function AppHeader() {
       >
         Rounds
       </NavLink>
+      <NavLink
+        to="/topologies"
+        style={({ isActive }) => ({
+          fontSize: 13,
+          color: isActive ? '#37abc8' : '#6a8090',
+          textDecoration: 'none',
+          transition: 'color 0.1s',
+        })}
+      >
+        Topologies
+      </NavLink>
     </div>
   );
 }

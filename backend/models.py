@@ -75,3 +75,22 @@ class NodeDistribution(BaseModel):
 
 class DistributionResponse(BaseModel):
     nodes: dict[str, NodeDistribution]
+
+
+class TopologyData(BaseModel):
+    roundId: int
+    roundName: str
+    duration: int
+    processes: dict[str, Any]
+    materials: dict[str, Any]
+    routers: dict[str, Any]
+    links: list[str]
+    events: list = []
+    editor_positions: dict[str, Any] = {}
+
+
+class TopologySummary(BaseModel):
+    id: int
+    name: str
+    station_count: int
+    link_count: int

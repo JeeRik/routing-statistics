@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppHeader } from './components/AppHeader';
 import { RoundsList } from './pages/RoundsList';
 import { Visualizer } from './pages/Visualizer';
+import { TopologyList } from './pages/TopologyList';
+import { TopologyEditor } from './pages/TopologyEditor';
 
 export default function App() {
   return (
@@ -11,6 +13,9 @@ export default function App() {
         <Route path="/" element={<Navigate to="/rounds" replace />} />
         <Route path="/rounds" element={<RoundsList />} />
         <Route path="/visualize/:roundId" element={<Visualizer />} />
+        <Route path="/topologies" element={<TopologyList />} />
+        <Route path="/topology/new" element={<TopologyEditor />} />
+        <Route path="/topology/:topoId/edit" element={<TopologyEditor />} />
       </Routes>
     </div>
   );
