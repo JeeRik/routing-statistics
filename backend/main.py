@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, str(Path(__file__).parent))
 
 import db
-from models import EdgeTraffic, GameState, LayoutData, MaterialTraffic, RoundDefinition, RoundSummary, TrafficResponse
+from models import DistributionResponse, EdgeTraffic, GameState, LayoutData, MaterialTraffic, NodeDistribution, RoundDefinition, RoundSummary, TrafficResponse
 from replay import compute_state
 
 app = FastAPI(title="routing-statistics")
@@ -113,7 +113,7 @@ def get_storage_history(round_id: int, node: str, mat_id: str, time_ms: int = 0)
             continue
         router_delta = {str(k): v for k, v in inner.get("routerDelta", {}).items()}
         delta = router_delta.get(mat_id, 0)
-        if delta <= 0:
+        if delta == 0:
             continue
         entries.append({
             "time_ms": ev_game_time,
@@ -189,6 +189,53 @@ def get_traffic(round_id: int, time_ms: int = 0, from_ms: int = 0):
         for key in edge_goods
     }
     return TrafficResponse(edges=edges)
+
+
+@app.get("/api/round/{round_id}/distribution", response_model=DistributionResponse)
+def get_distribution(round_id: int, time_ms: int = 0, material_id: str = ""):
+    defn = db.get_round_definition(round_id)
+    if not defn:
+        raise HTTPException(status_code=404, detail="Round not found")
+    round_start_time = defn.get("round_start_time")
+    if round_start_time is None or not material_id:
+        return DistributionResponse(nodes={})
+
+    round_start_ms = int(round_start_time * 1000)
+    cutoff = round_start_ms + time_ms
+    known_stations = set(defn.get("routers", {}).keys())
+
+    delivered: dict[str, int] = {}
+    taxed: dict[str, int] = {}
+
+    # material IDs in event JSON may be int or str — try both
+    mat_int = int(material_id) if material_id.isdigit() else None
+
+    def _get(d: dict, key: str) -> int:
+        v = d.get(key, d.get(mat_int, 0) if mat_int is not None else 0)
+        return int(v) if v else 0
+
+    for ev in _get_events_cached(round_id):
+        if ev["_ts"] > cutoff:
+            break
+        inner = ev.get("event", {})
+        if inner.get("type") != "card":
+            continue
+        router = ev.get("router", "")
+        if router not in known_stations:
+            continue
+        delta = _get(inner.get("routerDelta", {}), material_id)
+        toll  = _get(inner.get("linkDelta",   {}), material_id)
+        # rDelta < 0 → truck delivered to router (router gained material)
+        if delta < 0:
+            delivered[router] = delivered.get(router, 0) + abs(delta)
+        # lDelta > 0 → customs toll was deducted at this scan
+        if toll > 0:
+            taxed[router] = taxed.get(router, 0) + toll
+
+    return DistributionResponse(nodes={
+        r: NodeDistribution(delivered=delivered.get(r, 0), taxed=taxed.get(r, 0))
+        for r in known_stations
+    })
 
 
 @app.get("/api/layout/{round_id}", response_model=LayoutData)

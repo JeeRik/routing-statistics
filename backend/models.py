@@ -66,3 +66,12 @@ class EdgeTraffic(BaseModel):
 
 class TrafficResponse(BaseModel):
     edges: dict[str, EdgeTraffic]
+
+
+class NodeDistribution(BaseModel):
+    delivered: int
+    taxed: int
+
+
+class DistributionResponse(BaseModel):
+    nodes: dict[str, NodeDistribution]

@@ -13,7 +13,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { StationNode, type StationNodeData, type TruckBubble } from './StationNode';
 import { CustomEdge, type CustomEdgeData } from './CustomEdge';
-import type { GameState, LayoutData, RoundDefinition, TrafficResponse } from '../types/game';
+import type { DistributionResponse, GameState, LayoutData, RoundDefinition, TrafficResponse } from '../types/game';
 import { api } from '../api/client';
 import { MATERIAL_IDS } from '../constants';
 
@@ -29,6 +29,9 @@ interface Props {
   activeLayers: Set<string>;
   timeMs: number;
   trafficData?: TrafficResponse | null;
+  distributionData?: DistributionResponse | null;
+  distMaterial?: string | null;
+  distTrafficData?: TrafficResponse | null;
 }
 
 function circleLayout(letters: string[]): Record<string, { x: number; y: number }> {
@@ -65,6 +68,8 @@ function buildNodes(
   gameState: GameState | null,
   activeLayers: Set<string>,
   timeMs: number,
+  distributionData?: DistributionResponse | null,
+  distMaterial?: string | null,
 ): Node<StationNodeData>[] {
   const toId = (name: string) => MATERIAL_IDS[name] ?? name;
   // definition.materials and process keys use material names ("blue"); stock uses numeric IDs ("2")
@@ -73,6 +78,7 @@ function buildNodes(
   );
   const showSupply = activeLayers.has('storage');
   const showCargo = activeLayers.has('cargo');
+  const showDistribution = !!distMaterial;
   const trucksByLocation = computeTrucksByLocation(gameState);
 
   return Object.entries(definition.routers).map(([letter, routerDef]) => {
@@ -100,6 +106,10 @@ function buildNodes(
         showCargo,
         roundId,
         timeMs,
+        showDistribution,
+        distMaterialId: distMaterial ?? undefined,
+        distDelivered: distributionData?.nodes[letter]?.delivered,
+        distTaxed: distributionData?.nodes[letter]?.taxed,
       },
     };
   });
@@ -132,7 +142,7 @@ function buildEdges(
     .filter((e): e is Edge<CustomEdgeData> => e !== null);
 }
 
-export function NetworkMap({ roundId, definition, gameState, activeLayers, timeMs, trafficData }: Props) {
+export function NetworkMap({ roundId, definition, gameState, activeLayers, timeMs, trafficData, distributionData, distMaterial, distTrafficData }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState<StationNodeData>([]);
   const [edges, setEdges] = useEdgesState<CustomEdgeData>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -199,7 +209,7 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
       if (cancelled) return;
       positionsRef.current = positions;
       edgeOffsetsRef.current = edgeOffsets;
-      setNodes(buildNodes(roundId, definition, positions, null, activeLayers, 0));
+      setNodes(buildNodes(roundId, definition, positions, null, activeLayers, 0, distributionData, distMaterial));
       setEdges(buildEdges(definition, edgeOffsets, handleControlChange));
     })();
     return () => { cancelled = true; };
@@ -225,7 +235,7 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
     setNodes((prev) => prev.map((node) => ({ ...node, data: { ...node.data, timeMs } })));
   }, [timeMs, setNodes]);
 
-  // Toggle supply/cargo rows when activeLayers changes
+  // Toggle supply/cargo/distribution rows when activeLayers changes
   useEffect(() => {
     setNodes((prev) =>
       prev.map((node) => ({
@@ -234,10 +244,27 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
           ...node.data,
           showSupply: activeLayers.has('storage'),
           showCargo: activeLayers.has('cargo'),
+          showDistribution: activeLayers.has('distribution') && !!distMaterial,
         },
       })),
     );
-  }, [activeLayers, setNodes]);
+  }, [activeLayers, distMaterial, setNodes]);
+
+  // Update distribution stats when distributionData or distMaterial changes
+  useEffect(() => {
+    setNodes((prev) =>
+      prev.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          showDistribution: !!distMaterial,
+          distMaterialId: distMaterial ?? undefined,
+          distDelivered: distributionData?.nodes[node.id]?.delivered,
+          distTaxed: distributionData?.nodes[node.id]?.taxed,
+        },
+      })),
+    );
+  }, [distributionData, distMaterial, setNodes]);
 
   // Update edge traffic highlights when trafficData changes
   useEffect(() => {
@@ -261,6 +288,32 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
       },
     })));
   }, [trafficData, activeLayers, setEdges]);
+
+  // Update distribution edge highlights when distTrafficData or distMaterial changes
+  useEffect(() => {
+    if (!distTrafficData || !distMaterial) {
+      setEdges((prev) => prev.map((e) => ({
+        ...e,
+        data: { ...(e.data as CustomEdgeData), showDistribution: false },
+      })));
+      return;
+    }
+    // Collect per-material goods across all directed edges to find the max
+    const matGoods = Object.values(distTrafficData.edges)
+      .map((et) => et.by_material[distMaterial]?.goods ?? 0);
+    const distMaxGoods = Math.max(1, ...matGoods);
+    setEdges((prev) => prev.map((e) => ({
+      ...e,
+      data: {
+        ...(e.data as CustomEdgeData),
+        distFwd: distTrafficData.edges[e.source + e.target]?.by_material[distMaterial] ?? null,
+        distBwd: distTrafficData.edges[e.target + e.source]?.by_material[distMaterial] ?? null,
+        distMaxGoods,
+        showDistribution: true,
+        distMaterialId: distMaterial,
+      },
+    })));
+  }, [distTrafficData, distMaterial, setEdges]);
 
   const onNodesChangeWithSave = useCallback(
     (changes: NodeChange[]) => {

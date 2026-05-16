@@ -86,3 +86,12 @@ export interface EdgeTraffic {
 export interface TrafficResponse {
   edges: Record<string, EdgeTraffic>;
 }
+
+export interface NodeDistribution {
+  delivered: number;
+  taxed: number;
+}
+
+export interface DistributionResponse {
+  nodes: Record<string, NodeDistribution>;
+}

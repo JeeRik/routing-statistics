@@ -1,4 +1,4 @@
-import type { GameState, LayoutData, RoundDefinition, RoundSummary, StorageHistoryEntry, TrafficResponse, TruckHistoryEntry } from '../types/game';
+import type { DistributionResponse, GameState, LayoutData, RoundDefinition, RoundSummary, StorageHistoryEntry, TrafficResponse, TruckHistoryEntry } from '../types/game';
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
@@ -27,6 +27,8 @@ export const api = {
     get<StorageHistoryEntry[]>(`/api/round/${roundId}/node/${node}/material/${matId}/history?time_ms=${timeMs}`),
   getTraffic: (roundId: number, timeMs: number, fromMs = 0) =>
     get<TrafficResponse>(`/api/round/${roundId}/traffic?time_ms=${timeMs}&from_ms=${fromMs}`),
+  getDistribution: (roundId: number, timeMs: number, materialId: string) =>
+    get<DistributionResponse>(`/api/round/${roundId}/distribution?time_ms=${timeMs}&material_id=${materialId}`),
   getLayout: (roundId: number) => get<LayoutData>(`/api/layout/${roundId}`),
   saveLayout: (roundId: number, layout: Partial<LayoutData>) =>
     post<{ ok: boolean }>(`/api/layout/${roundId}`, layout),

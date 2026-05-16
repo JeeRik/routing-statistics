@@ -101,21 +101,40 @@ export function SupplyBadge({ materialId, count, nodeId, roundId, timeMs }: Prop
               <div style={{ padding: '4px 8px', color: '#4a6070', fontSize: 11 }}>Loading…</div>
             ) : history.length === 0 ? (
               <div style={{ padding: '4px 8px', color: '#4a6070', fontSize: 11 }}>No deliveries</div>
-            ) : history.map((entry, i) => (
-              <div key={i} style={{
+            ) : <>
+              <div style={{
                 padding: '2px 8px',
                 display: 'flex',
                 gap: 5,
                 fontSize: 11,
                 color: '#c8dce8',
+                borderBottom: '1px solid #2a3a4a',
+                marginBottom: 2,
               }}>
-                <span style={{ color: '#566878', minWidth: 35 }}>{formatMs(entry.time_ms)}</span>
+                <span style={{ minWidth: 35 }} />
                 <span style={{ color: '#3a4a5a' }}>:</span>
-                <span style={{ color: hex, minWidth: 24 }}>+{entry.delta}</span>
+                <span style={{ color: hex, minWidth: 24, fontWeight: 700 }}>
+                  {(() => { const s = history.reduce((acc, e) => acc + (-e.delta), 0); return (s > 0 ? '+' : '') + s; })()}
+                </span>
                 <span style={{ color: '#3a4a5a' }}>:</span>
-                <span style={{ color: '#8a9aaa' }}>{entry.card_id}</span>
+                <span style={{ color: '#8a9aaa' }}>{new Set(history.map(e => e.card_id)).size} trucks</span>
               </div>
-            ))}
+              {history.map((entry, i) => (
+                <div key={i} style={{
+                  padding: '2px 8px',
+                  display: 'flex',
+                  gap: 5,
+                  fontSize: 11,
+                  color: '#c8dce8',
+                }}>
+                  <span style={{ color: '#566878', minWidth: 35 }}>{formatMs(entry.time_ms)}</span>
+                  <span style={{ color: '#3a4a5a' }}>:</span>
+                  <span style={{ color: hex, minWidth: 24 }}>{-entry.delta > 0 ? '+' : ''}{-entry.delta}</span>
+                  <span style={{ color: '#3a4a5a' }}>:</span>
+                  <span style={{ color: '#8a9aaa' }}>{entry.card_id}</span>
+                </div>
+              ))}
+            </>}
           </div>
         </div>,
         document.body,

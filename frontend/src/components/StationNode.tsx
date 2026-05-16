@@ -1,4 +1,4 @@
-import { useState, useRef, Fragment } from 'react';
+import React, { useState, useRef, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
@@ -46,6 +46,10 @@ export interface StationNodeData {
   showCargo?: boolean;
   roundId?: number;
   timeMs?: number;
+  showDistribution?: boolean;
+  distMaterialId?: string;
+  distDelivered?: number;
+  distTaxed?: number;
 }
 
 export function StationNode({ data }: NodeProps<StationNodeData>) {
@@ -155,6 +159,54 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
           </div>
         </div>
       )}
+      {data.showDistribution && data.distMaterialId && (() => {
+        const matId = data.distMaterialId;
+        const isProducer = data.processDef?.outputs.includes(matId) ?? false;
+        const isConsumer = data.processDef?.inputs.includes(matId) ?? false;
+        const produced  = data.state?.produced?.[matId] ?? 0;
+        const delivered = data.distDelivered ?? 0;
+        const taxed     = data.distTaxed ?? 0;
+
+        const matColor = MATERIAL_COLORS[matId] ?? '#c8dce8';
+        const rowStyle: React.CSSProperties = {
+          marginTop: 4,
+          fontSize: 11,
+          fontFamily: 'monospace',
+          color: matColor,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 3,
+          minHeight: 18,
+        };
+        const gearStyle:  React.CSSProperties = { fontSize: 13, lineHeight: 1, color: '#93a7ac' };
+        const truckStyle: React.CSSProperties = { fontSize: 13, lineHeight: 1, color: '#37abc8' };
+        const stopStyle:  React.CSSProperties = { fontSize: 13, lineHeight: 1, color: '#d40000' };
+        const dimStyle: React.CSSProperties = { color: '#6a8090' };
+
+        if (isProducer) return (
+          <div style={rowStyle}>
+            <span className="material-icons" style={gearStyle}>settings</span>
+            +{produced}
+          </div>
+        );
+        if (isConsumer) return (
+          <div style={rowStyle}>
+            <span className="material-icons" style={truckStyle}>local_shipping</span>
+            -{delivered}
+            <span style={dimStyle}>/</span>
+            <span className="material-icons" style={stopStyle}>block</span>
+            -{taxed}
+          </div>
+        );
+        if (taxed > 0) return (
+          <div style={rowStyle}>
+            <span className="material-icons" style={stopStyle}>block</span>
+            -{taxed}
+          </div>
+        );
+        return <div style={{ minHeight: 18, marginTop: 4 }} />;
+      })()}
       {data.showCargo && data.trucks && data.trucks.length > 0 && (
         <div style={{ marginTop: 4 }}>
           {chunkArray(data.trucks, 4).map((row, i) => (

@@ -1,16 +1,30 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/client';
-import type { GameState, RoundDefinition, TrafficResponse } from '../types/game';
+import type { DistributionResponse, GameState, RoundDefinition, TrafficResponse } from '../types/game';
+import { MATERIAL_COLORS } from '../constants';
 import { NetworkMap } from '../components/NetworkMap';
 import { ReplayControls } from '../components/ReplayControls';
 
 const LAYERS = [
-  { id: 'storage', label: 'Storage' },
-  { id: 'cargo',   label: 'Cargo'   },
-  { id: 'taxed',   label: 'Taxed'   },
-  { id: 'traffic', label: 'Traffic' },
+  { id: 'storage',      label: 'Storage'        },
+  { id: 'cargo',        label: 'Truck locations' },
+  { id: 'distribution', label: 'Distribution'    },
+  { id: 'traffic',      label: 'Traffic'         },
 ] as const;
+
+// Materials A–I in production-chain order (J/rocket has no truck)
+const DIST_MATERIALS = [
+  { id: '2', label: 'Blue'   },
+  { id: '7', label: 'Yellow' },
+  { id: '8', label: 'Green'  },
+  { id: '1', label: 'Gray'   },
+  { id: '6', label: 'Orange' },
+  { id: '4', label: 'Pink'   },
+  { id: '5', label: 'Red'    },
+  { id: '3', label: 'Purple' },
+  { id: '9', label: 'Brown'  },
+];
 
 type LayerId = (typeof LAYERS)[number]['id'];
 type TrafficMode = 'whole-game' | 'last-20s' | 'last-60s';
@@ -26,6 +40,9 @@ export function Visualizer() {
   const [activeLayers, setActiveLayers] = useState<Set<LayerId>>(new Set(['storage']));
   const [trafficMode, setTrafficMode] = useState<TrafficMode>('whole-game');
   const [trafficData, setTrafficData] = useState<TrafficResponse | null>(null);
+  const [distMaterial, setDistMaterial] = useState<string>('2');
+  const [distributionData, setDistributionData] = useState<DistributionResponse | null>(null);
+  const [distTrafficData, setDistTrafficData] = useState<TrafficResponse | null>(null);
 
   useEffect(() => {
     if (!roundId) return;
@@ -49,6 +66,20 @@ export function Visualizer() {
       return next;
     });
   };
+
+  // Fetch distribution node + edge data when the layer is active, debounced 200 ms
+  useEffect(() => {
+    if (!activeLayers.has('distribution') || !definition) {
+      setDistributionData(null);
+      setDistTrafficData(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      api.getDistribution(roundId, timeMs, distMaterial).then(setDistributionData).catch(console.error);
+      api.getTraffic(roundId, timeMs, 0).then(setDistTrafficData).catch(console.error);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [activeLayers, timeMs, distMaterial, roundId, definition]);
 
   // Fetch traffic data when the layer is active, debounced 200 ms
   useEffect(() => {
@@ -119,6 +150,35 @@ export function Visualizer() {
                     <span style={{ fontSize: 13, userSelect: 'none' }}>{label}</span>
                   </label>
 
+                  {/* Distribution material color picker */}
+                  {id === 'distribution' && checked && (
+                    <div style={{ paddingLeft: 10, marginTop: 6, marginBottom: 4 }}>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, 1fr)',
+                        gap: 4,
+                      }}>
+                        {DIST_MATERIALS.map((m) => (
+                          <button
+                            key={m.id}
+                            title={m.label}
+                            onClick={() => setDistMaterial(m.id)}
+                            style={{
+                              width: 22, height: 22,
+                              borderRadius: 4,
+                              background: MATERIAL_COLORS[m.id],
+                              border: distMaterial === m.id ? '2px solid #fff' : '2px solid transparent',
+                              cursor: 'pointer',
+                              padding: 0,
+                              transform: distMaterial === m.id ? 'scale(1.15)' : 'scale(1)',
+                              transition: 'transform 0.1s, border-color 0.1s',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Traffic mode radio buttons */}
                   {id === 'traffic' && trafficActive && (
                     <div style={{ paddingLeft: 34, marginTop: 2, marginBottom: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -170,6 +230,9 @@ export function Visualizer() {
               activeLayers={activeLayers}
               timeMs={timeMs}
               trafficData={trafficData}
+              distributionData={distributionData}
+              distMaterial={activeLayers.has('distribution') ? distMaterial : null}
+              distTrafficData={distTrafficData}
             />
             {definition.duration > 0 && (
               <ReplayControls

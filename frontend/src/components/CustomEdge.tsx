@@ -2,7 +2,7 @@ import { useRef, useCallback, useState } from 'react';
 import { useStore } from 'reactflow';
 import type { EdgeProps } from 'reactflow';
 import ReactDOM from 'react-dom';
-import type { EdgeTraffic } from '../types/game';
+import type { EdgeTraffic, MaterialTraffic } from '../types/game';
 import { MATERIAL_COLORS } from '../constants';
 
 export interface CustomEdgeData {
@@ -13,10 +13,14 @@ export interface CustomEdgeData {
   trafficBwd?: EdgeTraffic | null;
   maxGoods?: number;
   showTraffic?: boolean;
+  distFwd?: MaterialTraffic | null;
+  distBwd?: MaterialTraffic | null;
+  distMaxGoods?: number;
+  showDistribution?: boolean;
+  distMaterialId?: string;
 }
 
-const TRAFFIC_YELLOW  = '#aa8800';
-const TRAFFIC_ORANGE  = '#884400';
+const TRAFFIC_COLOR   = '#8a9aaa'; // grey base for traffic highlights
 const MAIN_EDGE_HALF  = 1;   // half of the 2px main arc stroke
 const MAX_EXTRA_WIDTH = 8;
 const GRAD_PERIOD     = 60;  // px — one orange→yellow→orange cycle
@@ -27,7 +31,7 @@ function TrafficStrip({
   perp, sign,
   traffic, maxGoods,
   source, target, forward,
-  gradientId,
+  gradientId, labelColor,
 }: {
   sx: number; sy: number; cx: number; cy: number; tx: number; ty: number;
   perp: { x: number; y: number };
@@ -36,6 +40,7 @@ function TrafficStrip({
   maxGoods: number;
   source: string; target: string; forward: boolean;
   gradientId: string;
+  labelColor?: string;
 }) {
   const [hover, setHover] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -99,7 +104,7 @@ function TrafficStrip({
           whiteSpace: 'nowrap',
           lineHeight: 1.6,
         }}>
-          <div style={{ color: TRAFFIC_ORANGE, fontWeight: 700, marginBottom: 6 }}>
+          <div style={{ color: labelColor ?? TRAFFIC_COLOR, fontWeight: 700, marginBottom: 6 }}>
             {from} → {to}
           </div>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -213,8 +218,16 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
   const trafficBwd  = data?.trafficBwd;
   const maxGoods    = data?.maxGoods ?? 1;
 
-  const fwdGradId = `tg-${id}-f`;
-  const bwdGradId = `tg-${id}-b`;
+  const showDist    = data?.showDistribution ?? false;
+  const distFwd     = data?.distFwd;
+  const distBwd     = data?.distBwd;
+  const distMaxGoods = data?.distMaxGoods ?? 1;
+  const distMatId   = data?.distMaterialId ?? '';
+
+  const fwdGradId  = `tg-${id}-f`;
+  const bwdGradId  = `tg-${id}-b`;
+  const dfwdGradId = `dg-${id}-f`;
+  const dbwdGradId = `dg-${id}-b`;
 
   // Gradient shift vectors: one full GRAD_PERIOD step along ±path direction
   const fwdTo = `${ux * GRAD_PERIOD} ${uy * GRAD_PERIOD}`;
@@ -224,34 +237,65 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
     <g>
       {showTraffic && (
         <defs>
-          {/* Forward gradient: orange→yellow→orange tiling, slides source→target */}
           {trafficFwd && trafficFwd.goods > 0 && (
             <linearGradient id={fwdGradId} gradientUnits="userSpaceOnUse"
               x1={sx} y1={sy}
               x2={sx + ux * GRAD_PERIOD} y2={sy + uy * GRAD_PERIOD}
               spreadMethod="repeat">
-              <stop offset="0%"   stopColor={TRAFFIC_ORANGE} />
-              <stop offset="50%"  stopColor={TRAFFIC_YELLOW} />
-              <stop offset="100%" stopColor={TRAFFIC_ORANGE} />
+              <stop offset="0%"   stopColor={TRAFFIC_COLOR} stopOpacity={0.4} />
+              <stop offset="50%"  stopColor={TRAFFIC_COLOR} stopOpacity={0.8} />
+              <stop offset="100%" stopColor={TRAFFIC_COLOR} stopOpacity={0.4} />
               <animateTransform attributeName="gradientTransform" type="translate"
                 from="0 0" to={fwdTo} dur={ANIM_DUR} repeatCount="indefinite" />
             </linearGradient>
           )}
-          {/* Backward gradient: slides target→source */}
           {trafficBwd && trafficBwd.goods > 0 && (
             <linearGradient id={bwdGradId} gradientUnits="userSpaceOnUse"
               x1={tx} y1={ty}
               x2={tx + (-ux) * GRAD_PERIOD} y2={ty + (-uy) * GRAD_PERIOD}
               spreadMethod="repeat">
-              <stop offset="0%"   stopColor={TRAFFIC_ORANGE} />
-              <stop offset="50%"  stopColor={TRAFFIC_YELLOW} />
-              <stop offset="100%" stopColor={TRAFFIC_ORANGE} />
+              <stop offset="0%"   stopColor={TRAFFIC_COLOR} stopOpacity={0.4} />
+              <stop offset="50%"  stopColor={TRAFFIC_COLOR} stopOpacity={0.8} />
+              <stop offset="100%" stopColor={TRAFFIC_COLOR} stopOpacity={0.4} />
               <animateTransform attributeName="gradientTransform" type="translate"
                 from="0 0" to={bwdTo} dur={ANIM_DUR} repeatCount="indefinite" />
             </linearGradient>
           )}
         </defs>
       )}
+
+      {/* Distribution highlights — gradient defs */}
+      {showDist && (() => {
+        const distColor = MATERIAL_COLORS[distMatId] ?? TRAFFIC_COLOR;
+        return (
+          <defs>
+            {distFwd && distFwd.goods > 0 && (
+              <linearGradient id={dfwdGradId} gradientUnits="userSpaceOnUse"
+                x1={sx} y1={sy}
+                x2={sx + ux * GRAD_PERIOD} y2={sy + uy * GRAD_PERIOD}
+                spreadMethod="repeat">
+                <stop offset="0%"   stopColor={distColor} stopOpacity={0.4} />
+                <stop offset="50%"  stopColor={distColor} stopOpacity={0.8} />
+                <stop offset="100%" stopColor={distColor} stopOpacity={0.4} />
+                <animateTransform attributeName="gradientTransform" type="translate"
+                  from="0 0" to={fwdTo} dur={ANIM_DUR} repeatCount="indefinite" />
+              </linearGradient>
+            )}
+            {distBwd && distBwd.goods > 0 && (
+              <linearGradient id={dbwdGradId} gradientUnits="userSpaceOnUse"
+                x1={tx} y1={ty}
+                x2={tx + (-ux) * GRAD_PERIOD} y2={ty + (-uy) * GRAD_PERIOD}
+                spreadMethod="repeat">
+                <stop offset="0%"   stopColor={distColor} stopOpacity={0.4} />
+                <stop offset="50%"  stopColor={distColor} stopOpacity={0.8} />
+                <stop offset="100%" stopColor={distColor} stopOpacity={0.4} />
+                <animateTransform attributeName="gradientTransform" type="translate"
+                  from="0 0" to={bwdTo} dur={ANIM_DUR} repeatCount="indefinite" />
+              </linearGradient>
+            )}
+          </defs>
+        );
+      })()}
 
       {/* Traffic highlights — behind the main arc */}
       {showTraffic && trafficFwd && trafficFwd.goods > 0 && (
@@ -260,7 +304,7 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
           perp={perp} sign={1}
           traffic={trafficFwd} maxGoods={maxGoods}
           source={source} target={target} forward={true}
-          gradientId={fwdGradId}
+          gradientId={fwdGradId} labelColor={TRAFFIC_COLOR}
         />
       )}
       {showTraffic && trafficBwd && trafficBwd.goods > 0 && (
@@ -269,7 +313,29 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
           perp={perp} sign={-1}
           traffic={trafficBwd} maxGoods={maxGoods}
           source={source} target={target} forward={false}
-          gradientId={bwdGradId}
+          gradientId={bwdGradId} labelColor={TRAFFIC_COLOR}
+        />
+      )}
+
+      {/* Distribution highlights — material-specific strips */}
+      {showDist && distFwd && distFwd.goods > 0 && (
+        <TrafficStrip
+          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
+          perp={perp} sign={1}
+          traffic={{ goods: distFwd.goods, trips: distFwd.trips, by_material: { [distMatId]: distFwd } }}
+          maxGoods={distMaxGoods}
+          source={source} target={target} forward={true}
+          gradientId={dfwdGradId} labelColor={MATERIAL_COLORS[distMatId]}
+        />
+      )}
+      {showDist && distBwd && distBwd.goods > 0 && (
+        <TrafficStrip
+          sx={sx} sy={sy} cx={cx} cy={cy} tx={tx} ty={ty}
+          perp={perp} sign={-1}
+          traffic={{ goods: distBwd.goods, trips: distBwd.trips, by_material: { [distMatId]: distBwd } }}
+          maxGoods={distMaxGoods}
+          source={source} target={target} forward={false}
+          gradientId={dbwdGradId} labelColor={MATERIAL_COLORS[distMatId]}
         />
       )}
 
