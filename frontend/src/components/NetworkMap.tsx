@@ -165,7 +165,7 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
     return links;
   }, [definition]);
 
-  // Ctrl held → snap to grid
+  // Ctrl held → free placement (default is snap)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') setSnapActive(true); };
     const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') setSnapActive(false); };
@@ -354,7 +354,7 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         onNodesChange={onNodesChangeWithSave}
-        snapToGrid={snapActive}
+        snapToGrid={!snapActive}
         snapGrid={[SNAP_GRID, SNAP_GRID]}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -373,7 +373,7 @@ export function NetworkMap({ roundId, definition, gameState, activeLayers, timeM
             <MaterialPicker value={distMaterial ?? ''} links={materialLinks} />
           </div>
         </Panel>
-        {snapActive && (
+        {!snapActive && (
           <Panel
             position="top-center"
             style={{

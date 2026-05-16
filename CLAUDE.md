@@ -55,14 +55,16 @@ routing-statistics/
 │       ├── constants.ts               # MATERIAL_COLORS, MATERIAL_IDS, MATERIAL_NAMES
 │       ├── data/
 │       │   └── processSets.ts         # Three predefined process sets (tier1, tier1_2, full); MATERIAL_NAME_COLORS; processOutputColor(); detectProcessSet()
+│       ├── utils/
+│       │   └── cookies.ts             # getCookie / setCookie helpers (1-year expiry)
 │       ├── components/
-│       │   ├── AppHeader.tsx          # Persistent header with nav links to /rounds and /topologies
-│       │   ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid (fixed 160 px); permanent MaterialPicker panel in bottom-right
+│       │   ├── AppHeader.tsx          # Persistent header; nav links remember last-viewed round/topology via cookies (last_round_id, last_topo_id)
+│       │   ├── NetworkMap.tsx         # ReactFlow graph, snap-to-grid by default (160 px); Ctrl held = free placement; permanent MaterialPicker panel in bottom-right
 │       │   ├── CustomEdge.tsx         # Draggable quadratic-bezier arc edges; snaps to straight within 12 px; renders animated traffic/distribution highlights
-│       │   ├── StationNode.tsx        # Node with supply/cargo rows + process popover (fixed width 105 px); background tinted by output material color
-│       │   ├── TopologyCanvas.tsx     # ReactFlow editor canvas for topology editing; shift+drag to connect nodes; alt+click for process picker; ctrl+drag for grid snap
-│       │   ├── ProcessPicker.tsx      # Portal popup: 3×3 colored grid + rocket + none; opened by alt+click on a node in the topology editor
-│       │   ├── MaterialPicker.tsx     # Reusable 3×3 material color grid (tier-based layout) with SVG dependency-graph overlay; supports read-only mode
+│       │   ├── StationNode.tsx        # Node with supply/cargo rows + process popover (fixed width 105 px); background tinted by output material color; factory_rocket (no outputs) gets grey radial gradient
+│       │   ├── TopologyCanvas.tsx     # ReactFlow editor canvas for topology editing; click node → process picker; shift+drag to connect nodes; snap by default, Ctrl = free placement
+│       │   ├── ProcessPicker.tsx      # Portal popup that reuses MaterialPicker for the 3×3 grid + dependency lines; adds rocket + none buttons below; closes on mouse-leave (1 s grace period)
+│       │   ├── MaterialPicker.tsx     # Reusable 3×3 material color grid (tier-based layout) with SVG dependency-graph overlay; supports read-only mode and optional disabledIds (dimmed cells)
 │       │   ├── SupplyBadge.tsx        # Storage badge: solid material-color border, black→color fill bottom-to-top (max at 30); hover shows delivery history popup
 │       │   ├── TruckBadge.tsx         # Fill-level-aware truck bubble (cargo row, capacity 5); hover shows full scan-history popup
 │       │   └── ReplayControls.tsx     # Play/pause scrubber; Space bar toggles playback
@@ -133,10 +135,11 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 
 ### UI behaviours to know
 
+- **Nav memory:** the header "Rounds" link goes to the last-viewed round (`last_round_id` cookie → `/visualize/:id`) and "Topologies" goes to the last-edited topology (`last_topo_id` cookie → `/topology/:id/edit`); falls back to the list pages when no cookie is set. Cookies are written on mount by `Visualizer` and `TopologyEditor` (existing topologies only).
 - **Rounds table — Name column:** click any name cell to edit inline; Enter/blur saves to `layout/<id>.json`; Escape cancels. Shows `round_name` from DB as default when no custom name is set.
 - **Rounds table — Topology column:** `#nodes / #edges` fetched from `/api/round/{id}/definition`.
 - **Edge drag:** grab anywhere on an arc to reshape it (quadratic bezier, offset stored as `{ox, oy}` from midpoint); snaps to perfectly straight when the control point is within 12 px (graph coords) of the straight line
-- **Node snap:** hold **Ctrl** while dragging a node to snap to a fixed 160 px grid; a banner confirms when active
+- **Node snap:** nodes snap to a 160 px grid by default; hold **Ctrl** to disable snapping and place freely; a banner confirms snap is active (both Visualize and Topology editor)
 - **Node anchor:** edges connect at horizontal center + middle of the letter row (18px from top). Nodes have fixed width (105 px) so the anchor is stable during replay.
 - **Layer toggles:** Storage shows a supply row (inputs left, output right). Cargo shows truck bubbles (non-empty trucks at each station, ≤4 per row). Distribution and Traffic are described below.
 - **Distribution layer:** a 3×3 material color picker (bottom row = raw A/B/C, middle = tier-2 D/E/F, top = tier-3 G/H/I) plus a red ⛔ **None** button to the right. Selecting a material shows: producers `⚙ +produced` (grey cog), consumers `🚚 -delivered / ⛔ -taxed` (azure truck / red stop), toll-only nodes `⛔ -taxed`, others an empty spacer — all numbers in the material's color. Each edge gets an animated strip in that material's color at 40 %→80 %→40 % opacity, width scaled to the busiest edge. Fetches `/distribution` (node stats) and `/traffic` (edge stats) on every time or material change; no fetch when None is selected. Node box background is mildly tinted with the output material color (12 % blend).
@@ -152,9 +155,10 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 
 - **Process sets:** three predefined sets in `processSets.ts` — `tier1` (blue/yellow/green raw), `tier1_2` (+ gray/orange/pink tier-2), `full` (all 10 including rocket). Switching sets remaps router processes, keeping any process whose name still exists in the new set or is `factory_rocket`.
 - **Auto-save:** changes to `topo` or `positions` start an 800 ms debounce timer; the first run after load is skipped. For new topologies the first auto-save calls `POST /api/topologies/new` and navigates to `/topology/:id/edit` (replace history). For existing topologies it calls `POST /api/topology/:id`. A "Saving…" / "Saved" indicator appears in the sidebar bottom.
-- **Node interactions:** click → select (sidebar shows label + process); alt+click → `ProcessPicker` popup at cursor; shift+drag node→node → bidirectional edge (both "AB" and "BA" added); ctrl+drag → move with 160 px grid snap; drag → free move; Delete key → remove selected node.
+- **Node interactions:** click → opens `ProcessPicker` at cursor AND selects node (sidebar shows label + process); shift+drag node→node → bidirectional edge (both "AB" and "BA" added); drag → free move (snap on by default; Ctrl = free); Delete key → remove selected node.
 - **Edge interactions:** drag arc → reshape (quadratic bezier, same as visualizer); shift+click edge → delete edge; shift+drag edge → no-op.
-- **ProcessPicker:** portal-rendered popup; 3×3 grid matching `MaterialPicker` tier layout (row 0 = brown/red/purple, row 1 = gray/pink/orange, row 2 = blue/yellow/green); cells dimmed when not in current process set; `factory_rocket` always available as a separate button; "none" clears the process. `factory_rocket` is auto-added to the topology's `processes` dict when selected.
+- **ProcessPicker:** portal-rendered popup; embeds `MaterialPicker` for the 3×3 grid with dependency lines computed from the active process set; cells for processes not in the set are dimmed (opacity 0.2); rocket + none buttons below; closes on `onMouseLeave` or if cursor strays outside for >1 s; `factory_rocket` is auto-added to the topology's `processes` dict when selected.
+- **"New node" drag:** dragging the Add station button shows a ghost node styled like a real StationNode (letter, dark background, same border/radius) instead of a copy of the button.
 - **Connection line:** shift+drag from a node shows a dashed cyan SVG line (portal-rendered, `pointer-events: none`); start snaps to the source node center; end snaps to the center of any valid target node under the cursor.
 - **Topology storage:** `topologies/<id>.json` — same JSON schema as game `round_def` plus `editor_positions: { "<letter>": {x, y} }`. Edge arc offsets are not persisted (editor limitation). `_positions` must be `editor_positions` — Pydantic v2 treats underscore-prefixed fields as private.
 

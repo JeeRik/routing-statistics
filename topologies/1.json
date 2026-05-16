@@ -127,52 +127,91 @@
     "A": {
       "label": "A",
       "processes": [
-        "factory_blue"
+        "factory_green"
       ]
     },
     "B": {
       "label": "B",
       "processes": [
-        "factory_purple"
+        "factory_orange"
       ]
     },
     "C": {
       "label": "C",
-      "processes": []
+      "processes": [
+        "factory_pink"
+      ]
     },
     "D": {
       "label": "D",
       "processes": [
-        "factory_green"
+        "factory_yellow"
       ]
     },
     "E": {
       "label": "E",
-      "processes": []
+      "processes": [
+        "factory_blue"
+      ]
+    },
+    "F": {
+      "label": "F",
+      "processes": [
+        "factory_rocket"
+      ]
     }
   },
-  "links": [],
+  "links": [
+    "DA",
+    "AD",
+    "AE",
+    "EA",
+    "EC",
+    "CE",
+    "CF",
+    "FC",
+    "FB",
+    "BF",
+    "BD",
+    "DB",
+    "AB",
+    "BA",
+    "BC",
+    "CB",
+    "FE",
+    "EF",
+    "ED",
+    "DE",
+    "AC",
+    "CA",
+    "FD",
+    "DF"
+  ],
   "events": [],
   "editor_positions": {
     "A": {
-      "x": 540.0523885550346,
-      "y": 370.5894158518411
+      "x": 480,
+      "y": 160
     },
     "B": {
-      "x": 555.7194683514812,
-      "y": 604.1208112309769
+      "x": 800,
+      "y": 0
     },
     "C": {
-      "x": 898.2714123828313,
-      "y": 599.0684226759421
+      "x": 1120,
+      "y": 160
     },
     "D": {
-      "x": 885.1352021397413,
-      "y": 365.6480714333407
+      "x": 480,
+      "y": 480
     },
     "E": {
-      "x": 851.7894376765123,
-      "y": 267.6317334656683
+      "x": 800,
+      "y": 640
+    },
+    "F": {
+      "x": 1120,
+      "y": 480
     }
   }
 }

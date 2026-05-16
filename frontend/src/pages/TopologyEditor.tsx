@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { setCookie } from '../utils/cookies';
 import { api } from '../api/client';
 import type { NodePosition, RouterDef, TopologyData } from '../types/game';
 import { TopologyCanvas } from '../components/TopologyCanvas';
@@ -91,6 +92,7 @@ export function TopologyEditor() {
   useEffect(() => {
     if (isNew) { setLoaded(true); return; }
     const id = parseInt(topoId!, 10);
+    setCookie('last_topo_id', topoId!);
     api.getTopology(id).then((data) => {
       setTopo(data);
       const savedPos = (data.editor_positions ?? {}) as Record<string, NodePosition>;
@@ -292,7 +294,24 @@ export function TopologyEditor() {
           <label style={labelStyle}>Add station</label>
           <button
             draggable
-            onDragStart={(e) => e.dataTransfer.setData('application/x-topo-node', '1')}
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/x-topo-node', '1');
+              const ghost = document.createElement('div');
+              Object.assign(ghost.style, {
+                position: 'fixed', left: '-200px', top: '-200px',
+                width: '105px', boxSizing: 'border-box',
+                background: '#1e2530', border: '2px solid #3a4a5a',
+                borderRadius: '8px', padding: '6px 10px',
+                textAlign: 'center', fontFamily: 'monospace',
+                color: '#e0eaf0', fontSize: '16px', fontWeight: '700',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                pointerEvents: 'none',
+              });
+              ghost.textContent = next;
+              document.body.appendChild(ghost);
+              e.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2);
+              requestAnimationFrame(() => ghost.remove());
+            }}
             onClick={() => handleAddNode(next, { x: 0, y: 0 })}
             title="Click to add at origin, or drag onto canvas"
             style={{
@@ -309,7 +328,7 @@ export function TopologyEditor() {
               userSelect: 'none',
             }}
           >
-            + {next}  drag or click
+            New node: {next}
           </button>
         </div>
 

@@ -243,15 +243,10 @@ function TopologyCanvasInner({
     setEdges(buildEditorEdges(links, edgeOffsets, handleControlChange, handleDeleteEdge));
   }, [links, edgeOffsets, handleControlChange, handleDeleteEdge, setEdges]);
 
-  // Node click: Alt → process picker; normal → select
+  // Node click → open process picker near cursor
   const onNodeClick = useCallback(
     (e: React.MouseEvent, node: Node) => {
-      if (e.altKey) {
-        e.preventDefault();
-        setProcessPicker({ nodeId: node.id, x: e.clientX, y: e.clientY });
-        onNodeSelect(null);
-        return;
-      }
+      setProcessPicker({ nodeId: node.id, x: e.clientX, y: e.clientY });
       onNodeSelect(node.id);
     },
     [onNodeSelect],
@@ -330,7 +325,7 @@ function TopologyCanvasInner({
         multiSelectionKeyCode={null}
         nodesDraggable={!shiftHeld}
         nodesConnectable={false}
-        snapToGrid={ctrlHeld}
+        snapToGrid={!ctrlHeld}
         snapGrid={[SNAP_GRID, SNAP_GRID]}
         deleteKeyCode="Delete"
         fitView
@@ -341,7 +336,7 @@ function TopologyCanvasInner({
         <Background color="#2a3a4a" gap={20} />
         <Controls />
         <ProcessLegend processSet={processSet} />
-        {ctrlHeld && (
+        {!ctrlHeld && (
           <div style={{
             position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
             background: 'rgba(55,171,200,0.15)', border: '1px solid rgba(55,171,200,0.4)',

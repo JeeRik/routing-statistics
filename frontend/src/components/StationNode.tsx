@@ -52,7 +52,10 @@ export interface StationNodeData {
   distTaxed?: number;
 }
 
-function tintBackground(materialId: string | undefined): string {
+function nodeBackground(materialId: string | undefined, hasProcess: boolean): string {
+  if (hasProcess && !materialId) {
+    return 'radial-gradient(ellipse at center, #677f9c 0%, #141c28 100%)';
+  }
   if (!materialId) return '#1e2530';
   const hex = MATERIAL_COLORS[materialId];
   if (!hex) return '#1e2530';
@@ -82,7 +85,7 @@ export function StationNode({ data }: NodeProps<StationNodeData>) {
     <div
       style={{
         position: 'relative',
-        background: tintBackground(data.processDef?.outputs[0]),
+        background: nodeBackground(data.processDef?.outputs[0], !!data.processDef),
         border: '2px solid #3a4a5a',
         borderRadius: 8,
         padding: '6px 10px',

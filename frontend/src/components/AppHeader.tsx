@@ -1,6 +1,25 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import { getCookie } from '../utils/cookies';
 
 export function AppHeader() {
+  const { pathname } = useLocation();
+
+  const lastRoundId  = getCookie('last_round_id');
+  const lastTopoId   = getCookie('last_topo_id');
+
+  const roundsTo     = lastRoundId  ? `/visualize/${lastRoundId}`       : '/rounds';
+  const topologiesTo = lastTopoId   ? `/topology/${lastTopoId}/edit`    : '/topologies';
+
+  const roundsActive = pathname.startsWith('/rounds') || pathname.startsWith('/visualize/');
+  const topoActive   = pathname.startsWith('/topologies') || pathname.startsWith('/topology/');
+
+  const linkStyle = (active: boolean): React.CSSProperties => ({
+    fontSize: 13,
+    color: active ? '#37abc8' : '#6a8090',
+    textDecoration: 'none',
+    transition: 'color 0.1s',
+  });
+
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 16,
@@ -11,26 +30,10 @@ export function AppHeader() {
       <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: 1, color: '#c8dce8' }}>
         routing-statistics
       </span>
-      <NavLink
-        to="/rounds"
-        style={({ isActive }) => ({
-          fontSize: 13,
-          color: isActive ? '#37abc8' : '#6a8090',
-          textDecoration: 'none',
-          transition: 'color 0.1s',
-        })}
-      >
+      <NavLink to={roundsTo} style={() => linkStyle(roundsActive)}>
         Rounds
       </NavLink>
-      <NavLink
-        to="/topologies"
-        style={({ isActive }) => ({
-          fontSize: 13,
-          color: isActive ? '#37abc8' : '#6a8090',
-          textDecoration: 'none',
-          transition: 'color 0.1s',
-        })}
-      >
+      <NavLink to={topologiesTo} style={() => linkStyle(topoActive)}>
         Topologies
       </NavLink>
     </div>

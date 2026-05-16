@@ -41,9 +41,10 @@ interface Props {
   value: string;
   onChange?: (materialId: string) => void;
   links?: MaterialLink[];
+  disabledIds?: string[];
 }
 
-export function MaterialPicker({ value, onChange = undefined, links = [] }: Props) {
+export function MaterialPicker({ value, onChange = undefined, links = [], disabledIds = [] }: Props) {
   const interactive = onChange !== undefined;
   return (
     <div style={{ position: 'relative', width: GRID_SIZE, height: GRID_SIZE }}>
@@ -73,28 +74,32 @@ export function MaterialPicker({ value, onChange = undefined, links = [] }: Prop
 
       {/* Color swatches */}
       {GRID_ROWS.map((row, ri) =>
-        row.map((m, ci) => (
-          <button
-            key={m.id}
-            title={m.label}
-            onClick={interactive ? () => onChange!(m.id) : undefined}
-            style={{
-              position: 'absolute',
-              left: ci * STRIDE,
-              top:  ri * STRIDE,
-              width: CELL,
-              height: CELL,
-              borderRadius: 4,
-              background: MATERIAL_COLORS[m.id],
-              border: value === m.id ? '2px solid #fff' : '2px solid transparent',
-              cursor: interactive ? 'pointer' : 'default',
-              padding: 0,
-              pointerEvents: interactive ? undefined : 'none',
-              transform: value === m.id ? 'scale(1.15)' : 'scale(1)',
-              transition: 'transform 0.1s, border-color 0.1s',
-            }}
-          />
-        )),
+        row.map((m, ci) => {
+          const disabled = disabledIds.includes(m.id);
+          return (
+            <button
+              key={m.id}
+              title={m.label}
+              onClick={(interactive && !disabled) ? () => onChange!(m.id) : undefined}
+              style={{
+                position: 'absolute',
+                left: ci * STRIDE,
+                top:  ri * STRIDE,
+                width: CELL,
+                height: CELL,
+                borderRadius: 4,
+                background: MATERIAL_COLORS[m.id],
+                border: value === m.id ? '2px solid #fff' : '2px solid transparent',
+                cursor: (interactive && !disabled) ? 'pointer' : 'default',
+                padding: 0,
+                pointerEvents: (interactive && !disabled) ? undefined : 'none',
+                opacity: disabled ? 0.2 : 1,
+                transform: value === m.id ? 'scale(1.15)' : 'scale(1)',
+                transition: 'transform 0.1s, border-color 0.1s',
+              }}
+            />
+          );
+        }),
       )}
     </div>
   );

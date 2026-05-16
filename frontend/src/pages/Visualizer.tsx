@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { setCookie } from '../utils/cookies';
 import { api } from '../api/client';
 import type { DistributionResponse, GameState, RoundDefinition, TrafficResponse } from '../types/game';
 import { MATERIAL_IDS } from '../constants';
@@ -50,6 +51,7 @@ export function Visualizer() {
 
   useEffect(() => {
     if (!roundId) return;
+    setCookie('last_round_id', String(roundId));
     setDefinition(null);
     setGameState(null);
     setTimeMs(0);
