@@ -10,85 +10,27 @@
       },
       "duration": 4
     },
-    "factory_yellow": {
-      "inputs": {},
-      "outputs": {
-        "yellow": 1
-      },
-      "duration": 4
-    },
-    "factory_green": {
-      "inputs": {},
-      "outputs": {
-        "green": 1
-      },
-      "duration": 4
-    },
     "factory_gray": {
       "inputs": {
-        "blue": 1,
-        "yellow": 1
+        "blue": 1
       },
       "outputs": {
         "gray": 1
       },
-      "duration": 8
-    },
-    "factory_orange": {
-      "inputs": {
-        "yellow": 1,
-        "green": 1
-      },
-      "outputs": {
-        "orange": 1
-      },
-      "duration": 8
-    },
-    "factory_pink": {
-      "inputs": {
-        "green": 1,
-        "blue": 1
-      },
-      "outputs": {
-        "pink": 1
-      },
-      "duration": 8
-    },
-    "factory_red": {
-      "inputs": {
-        "gray": 1,
-        "orange": 1
-      },
-      "outputs": {
-        "red": 1
-      },
-      "duration": 15
-    },
-    "factory_purple": {
-      "inputs": {
-        "orange": 1,
-        "pink": 1
-      },
-      "outputs": {
-        "purple": 1
-      },
-      "duration": 15
+      "duration": 4
     },
     "factory_brown": {
       "inputs": {
-        "pink": 1,
         "gray": 1
       },
       "outputs": {
         "brown": 1
       },
-      "duration": 15
+      "duration": 4
     },
     "factory_rocket": {
       "inputs": {
-        "brown": 2,
-        "red": 6,
-        "purple": 8
+        "brown": 5
       },
       "outputs": {},
       "duration": 2
@@ -127,31 +69,27 @@
     "A": {
       "label": "A",
       "processes": [
-        "factory_green"
+        "factory_blue"
       ]
     },
     "B": {
       "label": "B",
-      "processes": [
-        "factory_orange"
-      ]
+      "processes": []
     },
     "C": {
       "label": "C",
-      "processes": [
-        "factory_pink"
-      ]
+      "processes": []
     },
     "D": {
       "label": "D",
       "processes": [
-        "factory_yellow"
+        "factory_gray"
       ]
     },
     "E": {
       "label": "E",
       "processes": [
-        "factory_blue"
+        "factory_brown"
       ]
     },
     "F": {
@@ -164,8 +102,6 @@
   "links": [
     "DA",
     "AD",
-    "AE",
-    "EA",
     "EC",
     "CE",
     "CF",
@@ -185,7 +121,9 @@
     "AC",
     "CA",
     "FD",
-    "DF"
+    "DF",
+    "AE",
+    "EA"
   ],
   "events": [],
   "editor_positions": {

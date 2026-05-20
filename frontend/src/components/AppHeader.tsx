@@ -7,11 +7,11 @@ export function AppHeader() {
   const lastRoundId  = getCookie('last_round_id');
   const lastTopoId   = getCookie('last_topo_id');
 
-  const roundsTo     = lastRoundId  ? `/visualize/${lastRoundId}`       : '/rounds';
-  const topologiesTo = lastTopoId   ? `/topology/${lastTopoId}/edit`    : '/topologies';
-
   const roundsActive = pathname.startsWith('/rounds') || pathname.startsWith('/visualize/');
   const topoActive   = pathname.startsWith('/topologies') || pathname.startsWith('/topology/');
+
+  const roundsTo     = roundsActive || !lastRoundId ? '/rounds'               : `/visualize/${lastRoundId}`;
+  const topologiesTo = topoActive   || !lastTopoId  ? '/topologies'           : `/topology/${lastTopoId}/edit`;
 
   const linkStyle = (active: boolean): React.CSSProperties => ({
     fontSize: 13,

@@ -1,0 +1,27 @@
+{
+  "key": "double",
+  "name": "Factories output two per execution",
+  "processes": {
+    "factory_blue":   { "inputs": {},                              "outputs": { "blue": 1 },   "duration": 4  },
+    "factory_yellow": { "inputs": {},                              "outputs": { "yellow": 1 }, "duration": 4  },
+    "factory_green":  { "inputs": {},                              "outputs": { "green": 1 },  "duration": 4  },
+    "factory_gray":   { "inputs": { "blue": 1, "yellow": 1 },     "outputs": { "gray": 2 },   "duration": 8  },
+    "factory_orange": { "inputs": { "yellow": 1, "green": 1 },    "outputs": { "orange": 2 }, "duration": 8  },
+    "factory_pink":   { "inputs": { "green": 1, "blue": 1 },      "outputs": { "pink": 2 },   "duration": 8  },
+    "factory_red":    { "inputs": { "gray": 1, "orange": 1 },     "outputs": { "red": 2 },    "duration": 8 },
+    "factory_purple": { "inputs": { "orange": 1, "pink": 1 },     "outputs": { "purple": 2 }, "duration": 8 },
+    "factory_brown":  { "inputs": { "pink": 1, "gray": 1 },       "outputs": { "brown": 2 },  "duration": 8 },
+    "factory_rocket": { "inputs": { "brown": 2, "red": 6, "purple": 8 }, "outputs": {},       "duration": 2  }
+  },
+  "materials": {
+    "blue":   { "capacity": 30 },
+    "yellow": { "capacity": 30 },
+    "green":  { "capacity": 30 },
+    "gray":   { "capacity": 30 },
+    "orange": { "capacity": 30 },
+    "pink":   { "capacity": 30 },
+    "red":    { "capacity": 30 },
+    "purple": { "capacity": 30 },
+    "brown":  { "capacity": 30 }
+  }
+}

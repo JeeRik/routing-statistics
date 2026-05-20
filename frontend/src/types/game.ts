@@ -70,6 +70,7 @@ export interface LayoutData {
   positions: Record<string, NodePosition>;
   edge_offsets?: Record<string, EdgeOffset>;
   custom_name?: string;
+  process_set_key?: string | null;
 }
 
 export interface MaterialTraffic {

@@ -41,6 +41,7 @@ export interface TopologyCanvasProps {
   onProcessChange: (nodeId: string, processName: string | null) => void;
   edgeOffsets: Record<string, { ox: number; oy: number }>;
   nextLetter: string;
+  zoomRef?: React.MutableRefObject<number>;
 }
 
 function processToNodeDef(processName: string | undefined, processSet: ProcessSet): StationNodeData['processDef'] {
@@ -110,7 +111,7 @@ interface ProcessPickerState {
 function TopologyCanvasInner({
   routers, links, positions, processSet, selectedNodeId,
   onNodeSelect, onAddNode, onDeleteNode, onAddLink, onDeleteLink,
-  onPositionChange, onEdgeOffsetChange, onProcessChange, edgeOffsets, nextLetter,
+  onPositionChange, onEdgeOffsetChange, onProcessChange, edgeOffsets, nextLetter, zoomRef,
 }: TopologyCanvasProps) {
   const { screenToFlowPosition } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<StationNodeData>([]);
@@ -322,6 +323,7 @@ function TopologyCanvasInner({
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragStart={(e) => e.preventDefault()}
+        onMove={(_, vp) => { if (zoomRef) zoomRef.current = vp.zoom; }}
         multiSelectionKeyCode={null}
         nodesDraggable={!shiftHeld}
         nodesConnectable={false}
@@ -335,7 +337,7 @@ function TopologyCanvasInner({
       >
         <Background color="#2a3a4a" gap={20} />
         <Controls />
-        <ProcessLegend processSet={processSet} />
+        <ProcessLegend processSet={processSet} routers={routers} />
         {!ctrlHeld && (
           <div style={{
             position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
@@ -380,25 +382,49 @@ function TopologyCanvasInner({
   );
 }
 
-function ProcessLegend({ processSet }: { processSet: ProcessSet }) {
+function ProcessLegend({ processSet, routers }: { processSet: ProcessSet; routers: Record<string, RouterDef> }) {
+  const counts: Record<string, number> = {};
+  for (const r of Object.values(routers)) {
+    const p = r.processes[0];
+    if (p) counts[p] = (counts[p] ?? 0) + 1;
+  }
+  const total = Object.keys(routers).length;
+  const unassigned = total - Object.values(counts).reduce((s, n) => s + n, 0);
+
   return (
     <div style={{
       position: 'absolute', bottom: 12, right: 12,
       background: '#151d28', border: '1px solid #2a3a4a',
       borderRadius: 6, padding: '8px 10px',
       fontSize: 11, fontFamily: 'monospace', color: '#8a9aaa',
-      zIndex: 10, maxWidth: 170,
+      zIndex: 10, minWidth: 160,
     }}>
-      <div style={{ marginBottom: 4, color: '#c8dce8', fontWeight: 600 }}>Processes</div>
-      {Object.keys(processSet.processes).map((name) => (
-        <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-          <div style={{
-            width: 10, height: 10, borderRadius: 2, flexShrink: 0,
-            background: processOutputColor(name),
-          }} />
-          <span style={{ color: '#c8dce8' }}>{name.replace('factory_', '')}</span>
+      <div style={{ marginBottom: 6, color: '#c8dce8', fontWeight: 600 }}>
+        Processes
+        <span style={{ float: 'right', color: '#4a6070', fontWeight: 400 }}>{total} nodes</span>
+      </div>
+      {Object.keys(processSet.processes).map((name) => {
+        const count = counts[name] ?? 0;
+        return (
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+            <div style={{
+              width: 10, height: 10, borderRadius: 2, flexShrink: 0,
+              background: processOutputColor(name, processSet.processes),
+            }} />
+            <span style={{ color: '#c8dce8', flex: 1 }}>{name.replace('factory_', '')}</span>
+            <span style={{ color: count > 0 ? '#37abc8' : '#2a3a4a', minWidth: 14, textAlign: 'right' }}>
+              {count > 0 ? count : '–'}
+            </span>
+          </div>
+        );
+      })}
+      {unassigned > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, paddingTop: 4, borderTop: '1px solid #2a3a4a' }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, flexShrink: 0, background: '#0a0f14', border: '1px solid #2a3a4a' }} />
+          <span style={{ color: '#4a6070', flex: 1 }}>none</span>
+          <span style={{ color: '#4a6070', minWidth: 14, textAlign: 'right' }}>{unassigned}</span>
         </div>
-      ))}
+      )}
     </div>
   );
 }

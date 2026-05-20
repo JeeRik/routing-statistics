@@ -1,0 +1,21 @@
+{
+  "key": "chain3",
+  "name": "Debug chain of 3 materials",
+  "processes": {
+    "factory_blue":   { "inputs": {},                 "outputs": { "blue": 1 },   "duration": 4  },
+    "factory_gray":   { "inputs": { "blue": 1 },      "outputs": { "gray": 1 },   "duration": 4  },
+    "factory_brown":  { "inputs": { "gray": 1 },      "outputs": { "brown": 1 },  "duration": 4 },
+    "factory_rocket": { "inputs": { "brown": 5 },     "outputs": {},              "duration": 2  }
+  },
+  "materials": {
+    "blue":   { "capacity": 30 },
+    "yellow": { "capacity": 30 },
+    "green":  { "capacity": 30 },
+    "gray":   { "capacity": 20 },
+    "orange": { "capacity": 20 },
+    "pink":   { "capacity": 20 },
+    "red":    { "capacity": 10 },
+    "purple": { "capacity": 10 },
+    "brown":  { "capacity": 10 }
+  }
+}

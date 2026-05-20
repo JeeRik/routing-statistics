@@ -27,6 +27,9 @@ LAYOUT_DIR.mkdir(exist_ok=True)
 TOPOLOGY_DIR = Path(__file__).parent.parent / "topologies"
 TOPOLOGY_DIR.mkdir(exist_ok=True)
 
+PROCESS_SET_DIR = Path(__file__).parent.parent / "process-sets"
+PROCESS_SET_DIR.mkdir(exist_ok=True)
+
 # Cache events per round to avoid re-reading from DB on every /state request
 _event_cache: dict[int, list[dict]] = {}
 
@@ -258,6 +261,34 @@ def save_layout(round_id: int, layout: LayoutData):
     incoming = layout.model_dump(exclude_unset=True)
     layout_file.write_text(json.dumps({**existing, **incoming}))
     return {"ok": True}
+
+
+@app.get("/api/topology/{topo_id}/layout", response_model=LayoutData)
+def get_topology_layout(topo_id: int):
+    f = LAYOUT_DIR / f"topo_{topo_id}.json"
+    if not f.exists():
+        raise HTTPException(status_code=404, detail="No saved layout")
+    return json.loads(f.read_text())
+
+
+@app.post("/api/topology/{topo_id}/layout")
+def save_topology_layout(topo_id: int, layout: LayoutData):
+    f = LAYOUT_DIR / f"topo_{topo_id}.json"
+    existing = json.loads(f.read_text()) if f.exists() else {}
+    incoming = layout.model_dump(exclude_unset=True)
+    f.write_text(json.dumps({**existing, **incoming}))
+    return {"ok": True}
+
+
+@app.get("/api/process-sets")
+def list_process_sets():
+    result = []
+    for f in sorted(PROCESS_SET_DIR.glob("*.json")):
+        try:
+            result.append(json.loads(f.read_text()))
+        except (json.JSONDecodeError, OSError):
+            pass
+    return result
 
 
 @app.get("/api/topologies", response_model=list[TopologySummary])

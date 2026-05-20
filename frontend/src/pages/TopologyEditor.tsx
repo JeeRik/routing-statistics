@@ -4,7 +4,7 @@ import { setCookie } from '../utils/cookies';
 import { api } from '../api/client';
 import type { NodePosition, RouterDef, TopologyData } from '../types/game';
 import { TopologyCanvas } from '../components/TopologyCanvas';
-import { PROCESS_SETS, detectProcessSet, processOutputColor } from '../data/processSets';
+import { detectProcessSet, findMatchingSet, matchesProcessSet, processOutputColor } from '../data/processSets';
 import type { ProcessSet } from '../data/processSets';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -73,11 +73,17 @@ export function TopologyEditor() {
   const navigate = useNavigate();
   const isNew = topoId === 'new' || !topoId;
 
-  const defaultSet = PROCESS_SETS[2]; // full chain
-  const [processSetKey, setProcessSetKey] = useState(defaultSet.key);
-  const processSet = PROCESS_SETS.find((s) => s.key === processSetKey) ?? defaultSet;
+  const [processSets, setProcessSets] = useState<ProcessSet[]>([]);
+  const [processSetKey, setProcessSetKey] = useState('full');
+  const CUSTOM_KEY = '-custom-';
+  const processSet: ProcessSet = processSetKey === CUSTOM_KEY
+    ? { key: CUSTOM_KEY, name: CUSTOM_KEY, processes: topo.processes as ProcessSet['processes'], materials: topo.materials as ProcessSet['materials'] }
+    : (processSets.find((s) => s.key === processSetKey) ?? processSets[processSets.length - 1]);
 
-  const [topo, setTopo] = useState<TopologyData>(() => emptyTopology(defaultSet));
+  const [topo, setTopo] = useState<TopologyData>(() => ({
+    roundId: 0, roundName: 'New topology', duration: 720,
+    processes: {}, materials: {}, routers: {}, links: [], events: [], editor_positions: {},
+  }));
   const [positions, setPositions] = useState<Record<string, NodePosition>>({});
   const [edgeOffsets, setEdgeOffsets] = useState<Record<string, { ox: number; oy: number }>>({});
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -85,6 +91,44 @@ export function TopologyEditor() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(isNew);
 
+  const loadProcessSets = useCallback(() => {
+    api.getProcessSets().then(setProcessSets).catch(() => {});
+  }, []);
+
+  useEffect(() => { loadProcessSets(); }, [loadProcessSets]);
+
+  // Apply default process set once loaded (new topologies only)
+  useEffect(() => {
+    if (!isNew || processSets.length === 0) return;
+    const def = processSets.find((s) => s.key === 'full') ?? processSets[processSets.length - 1];
+    setProcessSetKey(def.key);
+    setTopo((prev) => ({ ...prev, processes: def.processes, materials: def.materials }));
+  }, [processSets, isNew]);
+
+  // Stored process_set_key from the layout file, available once topology load completes.
+  // undefined = not yet loaded; null = no key stored; string = stored key
+  const storedKeyRef = useRef<string | null | undefined>(undefined);
+  const keyDeterminedRef = useRef(false);
+
+  // Once both topology and process sets are loaded, determine the correct key exactly once.
+  useEffect(() => {
+    if (isNew || !loaded || processSets.length === 0 || keyDeterminedRef.current) return;
+    if (storedKeyRef.current === undefined) return; // layout fetch not yet complete
+    keyDeterminedRef.current = true;
+    const stored = storedKeyRef.current;
+    if (stored && stored !== CUSTOM_KEY) {
+      const storedSet = processSets.find((s) => s.key === stored);
+      if (storedSet && matchesProcessSet(topo.processes, storedSet)) {
+        setProcessSetKey(stored);
+        return;
+      }
+    }
+    const matched = findMatchingSet(topo.processes, processSets);
+    setProcessSetKey(matched ?? CUSTOM_KEY);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, processSets]);
+
+  const zoomRef = useRef<number>(1);
   const isFirstRenderRef = useRef(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -93,7 +137,7 @@ export function TopologyEditor() {
     if (isNew) { setLoaded(true); return; }
     const id = parseInt(topoId!, 10);
     setCookie('last_topo_id', topoId!);
-    api.getTopology(id).then((data) => {
+    api.getTopology(id).then(async (data) => {
       setTopo(data);
       const savedPos = (data.editor_positions ?? {}) as Record<string, NodePosition>;
       setPositions(
@@ -101,7 +145,13 @@ export function TopologyEditor() {
           ? savedPos
           : circleLayout(Object.keys(data.routers)),
       );
-      setProcessSetKey(detectProcessSet(data.processes));
+      try {
+        const layout = await api.getTopoLayout(id);
+        if (layout.edge_offsets) setEdgeOffsets(layout.edge_offsets as Record<string, { ox: number; oy: number }>);
+        storedKeyRef.current = layout.process_set_key ?? null;
+      } catch (_) {
+        storedKeyRef.current = null;
+      }
       setLoaded(true);
     }).catch((e) => setError(String(e)));
   }, [topoId, isNew]);
@@ -149,7 +199,8 @@ export function TopologyEditor() {
   }, []);
 
   const handleProcessSetChange = (key: string) => {
-    const newSet = PROCESS_SETS.find((s) => s.key === key)!;
+    const newSet = processSets.find((s) => s.key === key);
+    if (!newSet) return;
     setProcessSetKey(key);
     setTopo((prev) => {
       const routers = Object.fromEntries(
@@ -214,7 +265,20 @@ export function TopologyEditor() {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [topo, positions, loaded, isNew, topoId, navigate]);
 
-  if (!loaded) {
+  const edgeSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!loaded || isNew || !topoId) return;
+    if (edgeSaveTimerRef.current) clearTimeout(edgeSaveTimerRef.current);
+    edgeSaveTimerRef.current = setTimeout(() => {
+      api.saveTopoLayout(parseInt(topoId, 10), {
+        edge_offsets: edgeOffsets,
+        process_set_key: processSetKey === CUSTOM_KEY ? null : processSetKey,
+      }).catch(() => {});
+    }, 800);
+    return () => { if (edgeSaveTimerRef.current) clearTimeout(edgeSaveTimerRef.current); };
+  }, [edgeOffsets, processSetKey, loaded, isNew, topoId]);
+
+  if (!loaded || !processSet) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4a6070' }}>
         Loading…
@@ -268,15 +332,31 @@ export function TopologyEditor() {
         </div>
         <div style={sectionStyle}>
           <label style={labelStyle}>Process set</label>
-          <select
-            value={processSetKey}
-            onChange={(e) => handleProcessSetChange(e.target.value)}
-            style={{ ...inputStyle, appearance: 'none' }}
-          >
-            {PROCESS_SETS.map((s) => (
-              <option key={s.key} value={s.key}>{s.name}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <select
+              value={processSetKey}
+              onChange={(e) => handleProcessSetChange(e.target.value)}
+              style={{ ...inputStyle, appearance: 'none', flex: 1 }}
+            >
+              {processSetKey === CUSTOM_KEY && (
+                <option value={CUSTOM_KEY} style={{ color: '#d46060' }}>— custom —</option>
+              )}
+              {processSets.map((s) => (
+                <option key={s.key} value={s.key}>{s.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={loadProcessSets}
+              title="Reload process sets from disk"
+              style={{
+                background: '#111820', color: '#4a6070',
+                border: '1px solid #2a3a4a', borderRadius: 5,
+                padding: '0 7px', fontSize: 14, cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              ↺
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -296,14 +376,16 @@ export function TopologyEditor() {
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('application/x-topo-node', '1');
+              const z = zoomRef.current;
               const ghost = document.createElement('div');
               Object.assign(ghost.style, {
                 position: 'fixed', left: '-200px', top: '-200px',
-                width: '105px', boxSizing: 'border-box',
-                background: '#1e2530', border: '2px solid #3a4a5a',
-                borderRadius: '8px', padding: '6px 10px',
+                width: `${Math.round(105 * z)}px`, boxSizing: 'border-box',
+                background: '#1e2530', border: `${Math.max(1, Math.round(2 * z))}px solid #3a4a5a`,
+                borderRadius: `${Math.round(8 * z)}px`,
+                padding: `${Math.round(6 * z)}px ${Math.round(10 * z)}px`,
                 textAlign: 'center', fontFamily: 'monospace',
-                color: '#e0eaf0', fontSize: '16px', fontWeight: '700',
+                color: '#e0eaf0', fontSize: `${Math.round(16 * z)}px`, fontWeight: '700',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                 pointerEvents: 'none',
               });
@@ -365,7 +447,7 @@ export function TopologyEditor() {
                 }}>
                   <div style={{
                     width: 10, height: 10, borderRadius: 2, flexShrink: 0,
-                    background: processOutputColor(selectedRouter.processes[0]),
+                    background: processOutputColor(selectedRouter.processes[0], processSet?.processes ?? {}),
                   }} />
                   {selectedRouter.processes[0].replace('factory_', '')}
                 </div>
@@ -441,6 +523,7 @@ export function TopologyEditor() {
         onProcessChange={handleProcessChange}
         edgeOffsets={edgeOffsets}
         nextLetter={next}
+        zoomRef={zoomRef}
       />
     </div>
   );

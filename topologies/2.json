@@ -1,0 +1,345 @@
+{
+  "roundId": 2,
+  "roundName": "4D cube",
+  "duration": 720,
+  "processes": {
+    "factory_blue": {
+      "inputs": {},
+      "outputs": {
+        "blue": 1
+      },
+      "duration": 4
+    },
+    "factory_yellow": {
+      "inputs": {},
+      "outputs": {
+        "yellow": 1
+      },
+      "duration": 4
+    },
+    "factory_green": {
+      "inputs": {},
+      "outputs": {
+        "green": 1
+      },
+      "duration": 4
+    },
+    "factory_gray": {
+      "inputs": {
+        "blue": 1,
+        "yellow": 1
+      },
+      "outputs": {
+        "gray": 1
+      },
+      "duration": 8
+    },
+    "factory_orange": {
+      "inputs": {
+        "yellow": 1,
+        "green": 1
+      },
+      "outputs": {
+        "orange": 1
+      },
+      "duration": 8
+    },
+    "factory_pink": {
+      "inputs": {
+        "green": 1,
+        "blue": 1
+      },
+      "outputs": {
+        "pink": 1
+      },
+      "duration": 8
+    },
+    "factory_red": {
+      "inputs": {
+        "gray": 1,
+        "orange": 1
+      },
+      "outputs": {
+        "red": 1
+      },
+      "duration": 15
+    },
+    "factory_purple": {
+      "inputs": {
+        "orange": 1,
+        "pink": 1
+      },
+      "outputs": {
+        "purple": 1
+      },
+      "duration": 15
+    },
+    "factory_brown": {
+      "inputs": {
+        "pink": 1,
+        "gray": 1
+      },
+      "outputs": {
+        "brown": 1
+      },
+      "duration": 15
+    },
+    "factory_rocket": {
+      "inputs": {
+        "brown": 2,
+        "red": 6,
+        "purple": 8
+      },
+      "outputs": {},
+      "duration": 2
+    }
+  },
+  "materials": {
+    "blue": {
+      "capacity": 30
+    },
+    "yellow": {
+      "capacity": 30
+    },
+    "green": {
+      "capacity": 30
+    },
+    "gray": {
+      "capacity": 20
+    },
+    "orange": {
+      "capacity": 20
+    },
+    "pink": {
+      "capacity": 20
+    },
+    "red": {
+      "capacity": 10
+    },
+    "purple": {
+      "capacity": 10
+    },
+    "brown": {
+      "capacity": 10
+    }
+  },
+  "routers": {
+    "A": {
+      "label": "A",
+      "processes": []
+    },
+    "B": {
+      "label": "B",
+      "processes": [
+        "factory_blue"
+      ]
+    },
+    "C": {
+      "label": "C",
+      "processes": [
+        "factory_gray"
+      ]
+    },
+    "D": {
+      "label": "D",
+      "processes": [
+        "factory_brown"
+      ]
+    },
+    "E": {
+      "label": "E",
+      "processes": []
+    },
+    "F": {
+      "label": "F",
+      "processes": [
+        "factory_yellow"
+      ]
+    },
+    "G": {
+      "label": "G",
+      "processes": [
+        "factory_pink"
+      ]
+    },
+    "H": {
+      "label": "H",
+      "processes": [
+        "factory_red"
+      ]
+    },
+    "I": {
+      "label": "I",
+      "processes": []
+    },
+    "J": {
+      "label": "J",
+      "processes": [
+        "factory_green"
+      ]
+    },
+    "K": {
+      "label": "K",
+      "processes": [
+        "factory_orange"
+      ]
+    },
+    "L": {
+      "label": "L",
+      "processes": [
+        "factory_purple"
+      ]
+    },
+    "M": {
+      "label": "M",
+      "processes": [
+        "factory_rocket"
+      ]
+    },
+    "N": {
+      "label": "N",
+      "processes": []
+    },
+    "O": {
+      "label": "O",
+      "processes": []
+    },
+    "P": {
+      "label": "P",
+      "processes": []
+    }
+  },
+  "links": [
+    "AB",
+    "BA",
+    "BF",
+    "FB",
+    "FE",
+    "EF",
+    "EA",
+    "AE",
+    "CD",
+    "DC",
+    "DH",
+    "HD",
+    "HG",
+    "GH",
+    "GC",
+    "CG",
+    "IJ",
+    "JI",
+    "JN",
+    "NJ",
+    "NM",
+    "MN",
+    "MI",
+    "IM",
+    "LP",
+    "PL",
+    "PO",
+    "OP",
+    "OK",
+    "KO",
+    "KL",
+    "LK",
+    "LJ",
+    "JL",
+    "JB",
+    "BJ",
+    "BD",
+    "DB",
+    "DL",
+    "LD",
+    "HP",
+    "PH",
+    "PN",
+    "NP",
+    "NF",
+    "FN",
+    "FH",
+    "HF",
+    "AC",
+    "CA",
+    "CK",
+    "KC",
+    "KI",
+    "IK",
+    "IA",
+    "AI",
+    "EG",
+    "GE",
+    "GO",
+    "OG",
+    "OM",
+    "MO",
+    "ME",
+    "EM"
+  ],
+  "events": [],
+  "editor_positions": {
+    "A": {
+      "x": 160,
+      "y": 0
+    },
+    "B": {
+      "x": 160,
+      "y": 320
+    },
+    "C": {
+      "x": 160,
+      "y": 640
+    },
+    "D": {
+      "x": 160,
+      "y": 960
+    },
+    "E": {
+      "x": 480,
+      "y": 0
+    },
+    "F": {
+      "x": 480,
+      "y": 320
+    },
+    "G": {
+      "x": 480,
+      "y": 640
+    },
+    "H": {
+      "x": 480,
+      "y": 960
+    },
+    "I": {
+      "x": 800,
+      "y": 0
+    },
+    "J": {
+      "x": 800,
+      "y": 320
+    },
+    "K": {
+      "x": 800,
+      "y": 640
+    },
+    "L": {
+      "x": 800,
+      "y": 960
+    },
+    "M": {
+      "x": 1120,
+      "y": 0
+    },
+    "N": {
+      "x": 1120,
+      "y": 320
+    },
+    "O": {
+      "x": 1120,
+      "y": 640
+    },
+    "P": {
+      "x": 1120,
+      "y": 960
+    }
+  }
+}

@@ -56,7 +56,7 @@ function nodeBackground(materialId: string | undefined, hasProcess: boolean): st
   if (hasProcess && !materialId) {
     return 'radial-gradient(ellipse at center, #677f9c 0%, #141c28 100%)';
   }
-  if (!materialId) return '#1e2530';
+  if (!materialId) return '#0a0f14';
   const hex = MATERIAL_COLORS[materialId];
   if (!hex) return '#1e2530';
   const br = 0x1e, bg = 0x25, bb = 0x30;
