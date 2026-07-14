@@ -1,6 +1,6 @@
 {
   "key": "original",
-  "name": "Original 2 to 1 processes",
+  "name": "2-2-3 inputs",
   "processes": {
     "factory_blue":   { "inputs": {},                               "outputs": { "blue": 1 },   "duration": 4  },
     "factory_yellow": { "inputs": {},                               "outputs": { "yellow": 1 }, "duration": 4  },

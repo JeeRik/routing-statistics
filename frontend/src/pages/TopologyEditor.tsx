@@ -4,7 +4,7 @@ import { setCookie } from '../utils/cookies';
 import { api } from '../api/client';
 import type { NodePosition, RouterDef, TopologyData } from '../types/game';
 import { TopologyCanvas } from '../components/TopologyCanvas';
-import { detectProcessSet, findMatchingSet, matchesProcessSet, processOutputColor } from '../data/processSets';
+import { detectProcessSet, findMatchingSet, matchesProcessSet, processOutputColor, MATERIAL_NAME_COLORS } from '../data/processSets';
 import type { ProcessSet } from '../data/processSets';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -90,6 +90,7 @@ export function TopologyEditor() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(isNew);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const loadProcessSets = useCallback(() => {
     api.getProcessSets().then(setProcessSets).catch(() => {});
@@ -288,6 +289,127 @@ export function TopologyEditor() {
 
   const selectedRouter = selectedNodeId ? topo.routers[selectedNodeId] : null;
   const next = nextUnusedLetter(topo.routers);
+
+  function printTopology() {
+    if (Object.keys(positions).length === 0) return;
+    const NODE_W = 105, NODE_H = 50, PAD = 80;
+    const xs = Object.values(positions).map((p) => p.x);
+    const ys = Object.values(positions).map((p) => p.y);
+    const minX = Math.min(...xs) - PAD, minY = Math.min(...ys) - PAD;
+    const svgW = Math.max(...xs) + NODE_W + PAD - minX;
+    const svgH = Math.max(...ys) + NODE_H + PAD - minY;
+
+    const nodeFill = (letter: string): string => {
+      const procName = topo.routers[letter]?.processes?.[0];
+      if (!procName) return '#e8eef0';
+      if (procName === 'factory_rocket') return '#888888';
+      const outMat = Object.keys(topo.processes[procName]?.outputs ?? {})[0];
+      return outMat ? (MATERIAL_NAME_COLORS[outMat] ?? '#cccccc') : '#cccccc';
+    };
+    const lum = (hex: string) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      return 0.299 * r + 0.587 * g + 0.114 * b;
+    };
+    const center = (l: string) => ({
+      x: (positions[l]?.x ?? 0) + NODE_W / 2 - minX,
+      y: (positions[l]?.y ?? 0) + NODE_H / 2 - minY,
+    });
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const drawnEdges = new Set<string>();
+    const edgeSvg = topo.links.map((link) => {
+      const [a, b] = [link[0], link[1]];
+      const key = [a, b].sort().join('-');
+      if (drawnEdges.has(key)) return '';
+      drawnEdges.add(key);
+      if (!positions[a] || !positions[b]) return '';
+      const sa = center(a), ta = center(b);
+      const off = edgeOffsets[`${a}-${b}`] ?? edgeOffsets[`${b}-${a}`] ?? { ox: 0, oy: 0 };
+      const ctrl = { x: (sa.x + ta.x) / 2 + off.ox * 1.5, y: (sa.y + ta.y) / 2 + off.oy * 1.5 };
+      return `<path d="M ${sa.x} ${sa.y} Q ${ctrl.x} ${ctrl.y} ${ta.x} ${ta.y}" fill="none" stroke="#222" stroke-width="1.5"/>`;
+    }).join('\n');
+
+    const nodeSvg = Object.entries(topo.routers).map(([letter, router]) => {
+      if (!positions[letter]) return '';
+      const x = positions[letter].x - minX, y = positions[letter].y - minY;
+      const fill = nodeFill(letter);
+      const fg = lum(fill) > 0.45 ? '#000000' : '#ffffff';
+      const hasLabel = router.label && router.label !== letter;
+      return [
+        `<rect x="${x}" y="${y}" width="${NODE_W}" height="${NODE_H}" rx="8" ry="8" fill="${fill}" stroke="#222" stroke-width="1.5"/>`,
+        `<text x="${x + NODE_W / 2}" y="${y + (hasLabel ? 21 : NODE_H / 2 + 6)}" text-anchor="middle" font-family="monospace" font-size="16" font-weight="700" fill="${fg}">${esc(letter)}</text>`,
+        hasLabel ? `<text x="${x + NODE_W / 2}" y="${y + 38}" text-anchor="middle" font-family="monospace" font-size="10" fill="${fg}" opacity="0.75">${esc(router.label)}</text>` : '',
+      ].join('');
+    }).join('\n');
+
+    // Process-set dependency preview (mirrors MaterialPicker grid)
+    const MAT_NAME_TO_ID: Record<string, string> = {
+      blue:'2', yellow:'7', green:'8', gray:'1',
+      orange:'6', pink:'4', red:'5', purple:'3', brown:'9',
+    };
+    const ID_COLOR: Record<string, string> = {
+      '1':'#93a7ac','2':'#37abc8','3':'#aa87de','4':'#d35f8d',
+      '5':'#d40000','6':'#d45500','7':'#ffcc00','8':'#aad400','9':'#a05a2c',
+    };
+    const PC = 22, PG = 12, PS = PC + PG, PGRID = 2 * PS + PC;
+    const PICK_ROWS = [['9','5','3'],['1','4','6'],['2','7','8']];
+    const PPOS: Record<string, {x:number,y:number}> = {};
+    PICK_ROWS.forEach((row, ri) => row.forEach((id, ci) => {
+      PPOS[id] = { x: ci * PS + PC / 2, y: ri * PS + PC / 2 };
+    }));
+    const activeMats = new Set<string>();
+    const seenLinks = new Set<string>();
+    const depLinesSvg: string[] = [];
+    for (const proc of Object.values(topo.processes)) {
+      const ins = Object.keys(proc.inputs ?? {}), outs = Object.keys(proc.outputs ?? {});
+      for (const m of [...ins, ...outs]) { const id = MAT_NAME_TO_ID[m]; if (id) activeMats.add(id); }
+      for (const inp of ins) for (const out of outs) {
+        const iid = MAT_NAME_TO_ID[inp], oid = MAT_NAME_TO_ID[out];
+        if (!iid || !oid) continue;
+        const key = `${iid}-${oid}`;
+        if (seenLinks.has(key)) continue;
+        seenLinks.add(key);
+        const f = PPOS[iid], t = PPOS[oid];
+        if (f && t) depLinesSvg.push(
+          `<line x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}" stroke="#555" stroke-width="3" stroke-linecap="square" shape-rendering="crispEdges"/>`
+        );
+      }
+    }
+    const pickCellsSvg = PICK_ROWS.flatMap((row, ri) =>
+      row.map((id, ci) => {
+        const x = ci * PS, y = ri * PS;
+        const col = ID_COLOR[id] ?? '#ccc';
+        const op = activeMats.has(id) ? 1 : 0.12;
+        return `<rect x="${x}" y="${y}" width="${PC}" height="${PC}" rx="4" ry="4" fill="${col}" stroke="white" stroke-width="1.5" opacity="${op}"/>`;
+      })
+    ).join('\n');
+    const pickSvg = `<svg viewBox="0 0 ${PGRID} ${PGRID}" style="display:block;width:calc(100%/6);height:auto;margin:20px auto 0" xmlns="http://www.w3.org/2000/svg">
+<rect width="${PGRID}" height="${PGRID}" fill="white"/>
+${depLinesSvg.join('\n')}
+${pickCellsSvg}
+</svg>`;
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${esc(topo.roundName)}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:white;padding:20px;font-family:monospace}h2{font-size:13px;color:#333;margin-bottom:12px}.topo-svg{display:block;width:100%;height:auto}@page{size:A4 portrait;margin:15mm}@media print{body{padding:0}}</style>
+</head><body>
+<h2>${esc(topo.roundName)}</h2>
+<svg class="topo-svg" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
+<rect width="${svgW}" height="${svgH}" fill="white"/>
+${edgeSvg}
+${nodeSvg}
+</svg>
+${pickSvg}
+<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));</script>
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (win) win.addEventListener('unload', () => URL.revokeObjectURL(url));
+  }
 
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -496,6 +618,28 @@ export function TopologyEditor() {
             {error}
           </div>
         )}
+        <button
+          onClick={printTopology}
+          style={{
+            width: '100%', background: 'rgba(55,171,200,0.12)', color: '#37abc8',
+            border: '1px solid rgba(55,171,200,0.4)', borderRadius: 5,
+            padding: '7px 10px', fontSize: 13, cursor: 'pointer',
+            fontFamily: 'monospace', marginBottom: 6, fontWeight: 600,
+          }}
+        >
+          Print
+        </button>
+        <button
+          onClick={() => setExportOpen(true)}
+          style={{
+            width: '100%', background: 'rgba(55,171,200,0.12)', color: '#37abc8',
+            border: '1px solid rgba(55,171,200,0.4)', borderRadius: 5,
+            padding: '7px 10px', fontSize: 13, cursor: 'pointer',
+            fontFamily: 'monospace', marginBottom: 8, fontWeight: 600,
+          }}
+        >
+          Export JSON
+        </button>
         {saveStatus !== 'idle' && (
           <div style={{
             fontSize: 11, fontFamily: 'monospace', textAlign: 'center', padding: '4px 0',
@@ -505,6 +649,52 @@ export function TopologyEditor() {
           </div>
         )}
       </div>
+
+      {/* Export modal */}
+      {exportOpen && (() => {
+        const exportData = { ...topo, editor_positions: positions, editor_edge_offsets: edgeOffsets };
+        const json = JSON.stringify(exportData, null, 2);
+        return (
+          <div onClick={() => setExportOpen(false)} style={{
+            position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.75)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div onClick={(e) => e.stopPropagation()} style={{
+              background: '#151d28', border: '1px solid #2a3a4a', borderRadius: 8,
+              width: '60vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 16px', borderBottom: '1px solid #2a3a4a',
+              }}>
+                <span style={{ fontSize: 12, fontFamily: 'monospace', color: '#6a8090' }}>{topo.roundName}</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {([
+                    ['Copy all', json],
+                    ['Copy game data', JSON.stringify(
+                      (({ editor_positions: _p, editor_edge_offsets: _o, ...d }) => d)(exportData), null, 2
+                    )],
+                  ] as [string, string][]).map(([label, text]) => (
+                    <button key={label} onClick={() => navigator.clipboard.writeText(text)} style={{
+                      background: 'rgba(55,171,200,0.12)', border: '1px solid rgba(55,171,200,0.4)',
+                      color: '#37abc8', borderRadius: 4, padding: '5px 14px',
+                      fontSize: 12, cursor: 'pointer', fontFamily: 'monospace', fontWeight: 600,
+                    }}>{label}</button>
+                  ))}
+                  <button onClick={() => setExportOpen(false)} style={{
+                    background: 'transparent', border: 'none', color: '#4a6070', fontSize: 16, cursor: 'pointer',
+                  }}>✕</button>
+                </div>
+              </div>
+              <pre style={{
+                margin: 0, padding: '12px 16px', overflowY: 'auto', flex: 1,
+                fontSize: 11, fontFamily: 'monospace', color: '#c8dce8', lineHeight: 1.6,
+              }}>{json}</pre>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Canvas */}
       <TopologyCanvas

@@ -27,6 +27,7 @@ const MAX_EXTRA_WIDTH    = 8;
 const GRAD_PERIOD        = 60;  // px — one orange→yellow→orange cycle
 const ANIM_DUR           = '1.2s';
 const SNAP_STRAIGHT_DIST = 12;  // px in graph coords — perpendicular threshold to snap straight
+const EDGE_GRID          = 40;  // px in graph coords — arc offset grid size
 
 function TrafficStrip({
   sx, sy, cx, cy, tx, ty,
@@ -188,11 +189,15 @@ export function CustomEdge({ id, source, target, data }: EdgeProps<CustomEdgeDat
         const dy = (me.clientY - startPos.current.y) / zoomRef.current;
         let ox = startOffset.current.x + dx;
         let oy = startOffset.current.y + dy;
-        // Snap to straight: control point is at mid + 2*(ox,oy), so perp dist = 2*|perp·(ox,oy)|
-        const p = perpRef.current;
-        if (Math.abs(2 * (p.x * ox + p.y * oy)) < SNAP_STRAIGHT_DIST) {
-          ox = 0;
-          oy = 0;
+        if (!me.shiftKey) {
+          ox = Math.round(ox / EDGE_GRID) * EDGE_GRID;
+          oy = Math.round(oy / EDGE_GRID) * EDGE_GRID;
+          // Snap to straight: control point is at mid + 2*(ox,oy), so perp dist = 2*|perp·(ox,oy)|
+          const p = perpRef.current;
+          if (Math.abs(2 * (p.x * ox + p.y * oy)) < SNAP_STRAIGHT_DIST) {
+            ox = 0;
+            oy = 0;
+          }
         }
         dataRef.current?.onControlChange(id, ox, oy);
       };

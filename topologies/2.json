@@ -8,21 +8,21 @@
       "outputs": {
         "blue": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_yellow": {
       "inputs": {},
       "outputs": {
         "yellow": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_green": {
       "inputs": {},
       "outputs": {
         "green": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_gray": {
       "inputs": {
@@ -31,7 +31,7 @@
       "outputs": {
         "gray": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_orange": {
       "inputs": {
@@ -40,7 +40,7 @@
       "outputs": {
         "orange": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_pink": {
       "inputs": {
@@ -49,7 +49,7 @@
       "outputs": {
         "pink": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_red": {
       "inputs": {
@@ -59,7 +59,7 @@
       "outputs": {
         "red": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_purple": {
       "inputs": {
@@ -69,7 +69,7 @@
       "outputs": {
         "purple": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_brown": {
       "inputs": {
@@ -79,7 +79,7 @@
       "outputs": {
         "brown": 1
       },
-      "duration": 10
+      "duration": 8
     },
     "factory_rocket": {
       "inputs": {
@@ -88,18 +88,18 @@
         "purple": 8
       },
       "outputs": {},
-      "duration": 1
+      "duration": 2
     }
   },
   "materials": {
     "blue": {
-      "capacity": 30
+      "capacity": 20
     },
     "yellow": {
-      "capacity": 30
+      "capacity": 20
     },
     "green": {
-      "capacity": 30
+      "capacity": 20
     },
     "gray": {
       "capacity": 20
@@ -111,13 +111,13 @@
       "capacity": 20
     },
     "red": {
-      "capacity": 10
+      "capacity": 20
     },
     "purple": {
-      "capacity": 10
+      "capacity": 20
     },
     "brown": {
-      "capacity": 10
+      "capacity": 20
     }
   },
   "routers": {
@@ -235,8 +235,6 @@
     "NJ",
     "JI",
     "IJ",
-    "GC",
-    "CG",
     "CD",
     "DC",
     "DH",
@@ -251,38 +249,40 @@
     "LP",
     "LK",
     "KL",
-    "LD",
-    "DL",
-    "PH",
-    "HP",
-    "KC",
-    "CK",
-    "OG",
-    "GO",
+    "CG",
+    "GC",
     "BD",
     "DB",
-    "FH",
     "HF",
+    "FH",
+    "GE",
+    "EG",
     "AC",
     "CA",
-    "EG",
-    "GE",
-    "IA",
     "AI",
+    "IA",
     "ME",
     "EM",
     "NF",
     "FN",
-    "JB",
     "BJ",
-    "JL",
-    "LJ",
-    "NP",
-    "PN",
+    "JB",
     "MO",
     "OM",
+    "PN",
+    "NP",
+    "JL",
+    "LJ",
+    "KI",
     "IK",
-    "KI"
+    "KC",
+    "CK",
+    "OG",
+    "GO",
+    "PH",
+    "HP",
+    "LD",
+    "DL"
   ],
   "events": [],
   "editor_positions": {

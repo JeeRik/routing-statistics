@@ -1,6 +1,6 @@
 {
   "key": "double",
-  "name": "Factories output two per execution",
+  "name": "2-2-3 inputs, output x2",
   "processes": {
     "factory_blue":   { "inputs": {},                              "outputs": { "blue": 1 },   "duration": 4  },
     "factory_yellow": { "inputs": {},                              "outputs": { "yellow": 1 }, "duration": 4  },

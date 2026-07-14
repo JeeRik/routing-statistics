@@ -63,7 +63,7 @@ function nodeBackground(materialId: string | undefined, hasProcess: boolean): st
   const mr = parseInt(hex.slice(1, 3), 16);
   const mg = parseInt(hex.slice(3, 5), 16);
   const mb = parseInt(hex.slice(5, 7), 16);
-  const t = 0.4;
+  const t = 0.5;
   const r = Math.round(br * (1 - t) + mr * t);
   const g = Math.round(bg * (1 - t) + mg * t);
   const b = Math.round(bb * (1 - t) + mb * t);
