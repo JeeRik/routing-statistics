@@ -160,7 +160,7 @@ Layout saves are **partial merges** (`exclude_unset=True`): saving positions nev
 - **ProcessPicker:** portal-rendered popup; embeds `MaterialPicker` for the 3×3 grid with dependency lines computed from the active process set; cells for processes not in the set are dimmed (opacity 0.2); rocket + none buttons below; closes on `onMouseLeave` or if cursor strays outside for >1 s; `factory_rocket` is auto-added to the topology's `processes` dict when selected.
 - **"New node" drag:** dragging the Add station button shows a ghost node styled like a real StationNode (letter, dark background, same border/radius) instead of a copy of the button.
 - **Connection line:** shift+drag from a node shows a dashed cyan SVG line (portal-rendered, `pointer-events: none`); start snaps to the source node center; end snaps to the center of any valid target node under the cursor.
-- **Topology storage:** `topologies/<id>.json` — same JSON schema as game `round_def` plus `editor_positions: { "<letter>": {x, y} }`. Edge arc offsets are not persisted (editor limitation). `_positions` must be `editor_positions` — Pydantic v2 treats underscore-prefixed fields as private.
+- **Topology storage:** `topologies/<id>.json` — same JSON schema as game `round_def` plus `editor_positions: { "<letter>": {x, y} }` and `editor_edge_offsets: { "<A-B>": {ox, oy} }`. `_positions` must be `editor_positions` — Pydantic v2 treats underscore-prefixed fields as private.
 
 ### Known data quirks (round 21)
 

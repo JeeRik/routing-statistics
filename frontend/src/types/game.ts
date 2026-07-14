@@ -104,6 +104,11 @@ export interface TopologySummary {
   link_count: number;
 }
 
+export interface FactorySetSummary {
+  id: number;
+  name: string;
+}
+
 export interface TopologyData {
   roundId: number;
   roundName: string;
@@ -114,4 +119,7 @@ export interface TopologyData {
   links: string[];
   events: unknown[];
   editor_positions?: Record<string, NodePosition>;
+  editor_edge_offsets?: Record<string, EdgeOffset>;
+  editor_process_set?: string;
+  editor_win_condition?: { brown: number; red: number; purple: number };
 }

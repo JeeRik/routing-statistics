@@ -88,6 +88,9 @@ class TopologyData(BaseModel):
     links: list[str]
     events: list = []
     editor_positions: dict[str, Any] = {}
+    editor_edge_offsets: dict[str, Any] = {}
+    editor_process_set: str = ''
+    editor_win_condition: dict[str, Any] = {}
 
 
 class TopologySummary(BaseModel):
@@ -95,3 +98,8 @@ class TopologySummary(BaseModel):
     name: str
     station_count: int
     link_count: int
+
+
+class FactorySetSummary(BaseModel):
+    id: int
+    name: str

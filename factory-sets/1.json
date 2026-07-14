@@ -1,0 +1,124 @@
+{
+  "name": "Round 21 \u2014 Full chain",
+  "processes": {
+    "factory_blue": {
+      "inputs": {},
+      "outputs": {
+        "blue": 1
+      },
+      "duration": 4
+    },
+    "factory_yellow": {
+      "inputs": {},
+      "outputs": {
+        "yellow": 1
+      },
+      "duration": 4
+    },
+    "factory_green": {
+      "inputs": {},
+      "outputs": {
+        "green": 1
+      },
+      "duration": 4
+    },
+    "factory_gray": {
+      "inputs": {
+        "blue": 1,
+        "yellow": 1
+      },
+      "outputs": {
+        "gray": 1
+      },
+      "duration": 8
+    },
+    "factory_orange": {
+      "inputs": {
+        "yellow": 1,
+        "green": 1
+      },
+      "outputs": {
+        "orange": 1
+      },
+      "duration": 8
+    },
+    "factory_pink": {
+      "inputs": {
+        "green": 1,
+        "blue": 1
+      },
+      "outputs": {
+        "pink": 1
+      },
+      "duration": 8
+    },
+    "factory_red": {
+      "inputs": {
+        "gray": 1,
+        "orange": 1
+      },
+      "outputs": {
+        "red": 1
+      },
+      "duration": 15
+    },
+    "factory_purple": {
+      "inputs": {
+        "orange": 1,
+        "pink": 1
+      },
+      "outputs": {
+        "purple": 1
+      },
+      "duration": 15
+    },
+    "factory_brown": {
+      "inputs": {
+        "pink": 1,
+        "gray": 1
+      },
+      "outputs": {
+        "brown": 1
+      },
+      "duration": 15
+    },
+    "factory_rocket": {
+      "inputs": {
+        "brown": 2,
+        "red": 6,
+        "purple": 8
+      },
+      "outputs": {},
+      "duration": 2
+    }
+  },
+  "materials": {
+    "blue": {
+      "capacity": 30
+    },
+    "yellow": {
+      "capacity": 30
+    },
+    "green": {
+      "capacity": 30
+    },
+    "gray": {
+      "capacity": 20
+    },
+    "orange": {
+      "capacity": 20
+    },
+    "pink": {
+      "capacity": 20
+    },
+    "red": {
+      "capacity": 10
+    },
+    "purple": {
+      "capacity": 10
+    },
+    "brown": {
+      "capacity": 10
+    }
+  }
+}

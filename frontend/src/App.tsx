@@ -4,6 +4,7 @@ import { RoundsList } from './pages/RoundsList';
 import { Visualizer } from './pages/Visualizer';
 import { TopologyList } from './pages/TopologyList';
 import { TopologyEditor } from './pages/TopologyEditor';
+import { FactorySetEditor } from './pages/FactorySetEditor';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/topologies" element={<TopologyList />} />
         <Route path="/topology/new" element={<TopologyEditor />} />
         <Route path="/topology/:topoId/edit" element={<TopologyEditor />} />
+        <Route path="/factory-sets" element={<FactorySetEditor />} />
       </Routes>
     </div>
   );

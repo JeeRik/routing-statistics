@@ -1,58 +1,55 @@
 {
   "roundId": 2,
-  "roundName": "4D cube",
-  "duration": 720,
+  "roundName": "Robotabor",
+  "duration": 1200,
   "processes": {
     "factory_blue": {
       "inputs": {},
       "outputs": {
         "blue": 1
       },
-      "duration": 4
+      "duration": 10
     },
     "factory_yellow": {
       "inputs": {},
       "outputs": {
         "yellow": 1
       },
-      "duration": 4
+      "duration": 10
     },
     "factory_green": {
       "inputs": {},
       "outputs": {
         "green": 1
       },
-      "duration": 4
+      "duration": 10
     },
     "factory_gray": {
       "inputs": {
-        "blue": 1,
-        "yellow": 1
+        "blue": 1
       },
       "outputs": {
         "gray": 1
       },
-      "duration": 8
+      "duration": 10
     },
     "factory_orange": {
       "inputs": {
-        "yellow": 1,
         "green": 1
       },
       "outputs": {
         "orange": 1
       },
-      "duration": 8
+      "duration": 10
     },
     "factory_pink": {
       "inputs": {
-        "green": 1,
-        "blue": 1
+        "yellow": 1
       },
       "outputs": {
         "pink": 1
       },
-      "duration": 8
+      "duration": 10
     },
     "factory_red": {
       "inputs": {
@@ -62,7 +59,7 @@
       "outputs": {
         "red": 1
       },
-      "duration": 15
+      "duration": 10
     },
     "factory_purple": {
       "inputs": {
@@ -72,7 +69,7 @@
       "outputs": {
         "purple": 1
       },
-      "duration": 15
+      "duration": 10
     },
     "factory_brown": {
       "inputs": {
@@ -82,7 +79,7 @@
       "outputs": {
         "brown": 1
       },
-      "duration": 15
+      "duration": 10
     },
     "factory_rocket": {
       "inputs": {
@@ -91,7 +88,7 @@
         "purple": 8
       },
       "outputs": {},
-      "duration": 2
+      "duration": 1
     }
   },
   "materials": {
@@ -126,87 +123,99 @@
   "routers": {
     "A": {
       "label": "A",
-      "processes": []
+      "processes": [
+        "factory_rocket"
+      ]
     },
     "B": {
       "label": "B",
       "processes": [
-        "factory_blue"
+        "factory_gray"
       ]
     },
     "C": {
       "label": "C",
       "processes": [
-        "factory_gray"
+        "factory_yellow"
       ]
     },
     "D": {
       "label": "D",
       "processes": [
-        "factory_brown"
+        "factory_purple"
       ]
     },
     "E": {
       "label": "E",
-      "processes": []
+      "processes": [
+        "factory_pink"
+      ]
     },
     "F": {
       "label": "F",
       "processes": [
-        "factory_yellow"
+        "factory_green"
       ]
     },
     "G": {
       "label": "G",
       "processes": [
-        "factory_pink"
+        "factory_orange"
       ]
     },
     "H": {
       "label": "H",
       "processes": [
-        "factory_red"
+        "factory_blue"
       ]
     },
     "I": {
       "label": "I",
-      "processes": []
+      "processes": [
+        "factory_blue"
+      ]
     },
     "J": {
       "label": "J",
       "processes": [
-        "factory_green"
+        "factory_pink"
       ]
     },
     "K": {
       "label": "K",
       "processes": [
-        "factory_orange"
+        "factory_green"
       ]
     },
     "L": {
       "label": "L",
       "processes": [
-        "factory_purple"
+        "factory_gray"
       ]
     },
     "M": {
       "label": "M",
       "processes": [
-        "factory_rocket"
+        "factory_red"
       ]
     },
     "N": {
       "label": "N",
-      "processes": []
+      "processes": [
+        "factory_yellow"
+      ]
     },
     "O": {
       "label": "O",
-      "processes": []
+      "processes": [
+        "factory_brown"
+      ]
     },
     "P": {
       "label": "P",
-      "processes": []
+      "processes": [
+        "factory_orange"
+      ]
     }
   },
   "links": [
@@ -218,128 +227,196 @@
     "EF",
     "EA",
     "AE",
+    "IM",
+    "MI",
+    "MN",
+    "NM",
+    "JN",
+    "NJ",
+    "JI",
+    "IJ",
+    "GC",
+    "CG",
     "CD",
     "DC",
     "DH",
     "HD",
     "HG",
     "GH",
-    "GC",
-    "CG",
-    "IJ",
-    "JI",
-    "JN",
-    "NJ",
-    "NM",
-    "MN",
-    "MI",
-    "IM",
-    "LP",
-    "PL",
-    "PO",
-    "OP",
-    "OK",
     "KO",
-    "KL",
+    "OK",
+    "OP",
+    "PO",
+    "PL",
+    "LP",
     "LK",
-    "LJ",
-    "JL",
-    "JB",
-    "BJ",
+    "KL",
+    "LD",
+    "DL",
+    "PH",
+    "HP",
+    "KC",
+    "CK",
+    "OG",
+    "GO",
     "BD",
     "DB",
-    "DL",
-    "LD",
-    "HP",
-    "PH",
-    "PN",
-    "NP",
-    "NF",
-    "FN",
     "FH",
     "HF",
     "AC",
     "CA",
-    "CK",
-    "KC",
-    "KI",
-    "IK",
-    "IA",
-    "AI",
     "EG",
     "GE",
-    "GO",
-    "OG",
-    "OM",
-    "MO",
+    "IA",
+    "AI",
     "ME",
-    "EM"
+    "EM",
+    "NF",
+    "FN",
+    "JB",
+    "BJ",
+    "JL",
+    "LJ",
+    "NP",
+    "PN",
+    "MO",
+    "OM",
+    "IK",
+    "KI"
   ],
   "events": [],
   "editor_positions": {
     "A": {
-      "x": 160,
-      "y": 0
+      "x": -640,
+      "y": -160
     },
     "B": {
-      "x": 160,
-      "y": 320
+      "x": -320,
+      "y": -160
     },
     "C": {
-      "x": 160,
-      "y": 640
+      "x": 0,
+      "y": -160
     },
     "D": {
-      "x": 160,
-      "y": 960
+      "x": 320,
+      "y": -160
     },
     "E": {
-      "x": 480,
-      "y": 0
+      "x": -640,
+      "y": 160
     },
     "F": {
-      "x": 480,
-      "y": 320
+      "x": -320,
+      "y": 160
     },
     "G": {
-      "x": 480,
-      "y": 640
+      "x": 0,
+      "y": 160
     },
     "H": {
-      "x": 480,
-      "y": 960
+      "x": 320,
+      "y": 160
     },
     "I": {
-      "x": 800,
-      "y": 0
+      "x": -640,
+      "y": 480
     },
     "J": {
-      "x": 800,
-      "y": 320
+      "x": -320,
+      "y": 480
     },
     "K": {
-      "x": 800,
-      "y": 640
+      "x": 0,
+      "y": 480
     },
     "L": {
-      "x": 800,
-      "y": 960
+      "x": 320,
+      "y": 480
     },
     "M": {
-      "x": 1120,
-      "y": 0
+      "x": -640,
+      "y": 800
     },
     "N": {
-      "x": 1120,
-      "y": 320
+      "x": -320,
+      "y": 800
     },
     "O": {
-      "x": 1120,
-      "y": 640
+      "x": 0,
+      "y": 800
     },
     "P": {
-      "x": 1120,
-      "y": 960
+      "x": 320,
+      "y": 800
     }
-  }
+  },
+  "editor_edge_offsets": {
+    "G-O": {
+      "ox": 102.08244274809161,
+      "oy": -0.9114503816793894
+    },
+    "H-P": {
+      "ox": 108.46259541984733,
+      "oy": 7.291603053435115
+    },
+    "D-L": {
+      "ox": -101.17099236641222,
+      "oy": 2.7343511450381683
+    },
+    "C-K": {
+      "ox": -80.20763358778626,
+      "oy": -9.114503816793894
+    },
+    "B-J": {
+      "ox": -90.23358778625955,
+      "oy": 9.114503816793894
+    },
+    "E-M": {
+      "ox": 91.14503816793894,
+      "oy": 2.7343511450381683
+    },
+    "F-N": {
+      "ox": 86.58778625954199,
+      "oy": -4.557251908396947
+    },
+    "A-I": {
+      "ox": -96.61374045801527,
+      "oy": 12.760305343511451
+    },
+    "E-G": {
+      "ox": 8.203053435114505,
+      "oy": -91.14503816793894
+    },
+    "A-C": {
+      "ox": 0.9114503816793894,
+      "oy": -65.62442748091604
+    },
+    "B-D": {
+      "ox": 2.7343511450381683,
+      "oy": 61.97862595419848
+    },
+    "F-H": {
+      "ox": 3.6458015267175576,
+      "oy": 58.33282442748092
+    },
+    "I-K": {
+      "ox": -6.3801526717557255,
+      "oy": -65.62442748091604
+    },
+    "J-L": {
+      "ox": 0.9114503816793894,
+      "oy": 72.91603053435115
+    },
+    "M-O": {
+      "ox": -4.557251908396947,
+      "oy": -70.18167938931299
+    },
+    "N-P": {
+      "ox": 0.9114503816793894,
+      "oy": 69.27022900763359
+    }
+  },
+  "editor_process_set": "narrow",
+  "editor_win_condition": {}
 }
