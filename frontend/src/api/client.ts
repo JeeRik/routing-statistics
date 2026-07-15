@@ -33,9 +33,6 @@ export const api = {
   getLayout: (roundId: number) => get<LayoutData>(`/api/layout/${roundId}`),
   saveLayout: (roundId: number, layout: Partial<LayoutData>) =>
     post<{ ok: boolean }>(`/api/layout/${roundId}`, layout),
-  getTopoLayout: (id: number) => get<LayoutData>(`/api/topology/${id}/layout`),
-  saveTopoLayout: (id: number, layout: Partial<LayoutData>) =>
-    post<{ ok: boolean }>(`/api/topology/${id}/layout`, layout),
   getProcessSets: () => get<ProcessSet[]>('/api/process-sets'),
   getTopologies: () => get<TopologySummary[]>('/api/topologies'),
   getTopology: (id: number) => get<TopologyData>(`/api/topology/${id}`),

@@ -15,6 +15,11 @@ const ROCKET_PROCESS = {
   duration: 2,
 };
 
+function rocketDefaults(set: ProcessSet): { brown: number; red: number; purple: number } {
+  const r = set.processes['factory_rocket'];
+  return { brown: r?.inputs?.brown ?? 2, red: r?.inputs?.red ?? 6, purple: r?.inputs?.purple ?? 8 };
+}
+
 function nextUnusedLetter(routers: Record<string, RouterDef>): string {
   return LETTERS.find((l) => !(l in routers)) ?? 'A';
 }
@@ -86,11 +91,15 @@ export function TopologyEditor() {
   }));
   const [positions, setPositions] = useState<Record<string, NodePosition>>({});
   const [edgeOffsets, setEdgeOffsets] = useState<Record<string, { ox: number; oy: number }>>({});
+  const [winCondition, setWinCondition] = useState<{ brown: number; red: number; purple: number }>(() => ({ brown: 2, red: 6, purple: 8 }));
+  const winConditionRef = useRef<{ brown: number; red: number; purple: number }>({ brown: 2, red: 6, purple: 8 });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(isNew);
   const [exportOpen, setExportOpen] = useState(false);
+
+  useEffect(() => { winConditionRef.current = winCondition; }, [winCondition]);
 
   const loadProcessSets = useCallback(() => {
     api.getProcessSets().then(setProcessSets).catch(() => {});
@@ -104,17 +113,18 @@ export function TopologyEditor() {
     const def = processSets.find((s) => s.key === 'full') ?? processSets[processSets.length - 1];
     setProcessSetKey(def.key);
     setTopo((prev) => ({ ...prev, processes: def.processes, materials: def.materials }));
+    setWinCondition(rocketDefaults(def));
   }, [processSets, isNew]);
 
-  // Stored process_set_key from the layout file, available once topology load completes.
-  // undefined = not yet loaded; null = no key stored; string = stored key
-  const storedKeyRef = useRef<string | null | undefined>(undefined);
+  // Stored process_set key from the topology file, available once topology load completes.
+  // undefined = not yet loaded; '' = no key stored; string = stored key
+  const storedKeyRef = useRef<string | undefined>(undefined);
   const keyDeterminedRef = useRef(false);
 
   // Once both topology and process sets are loaded, determine the correct key exactly once.
   useEffect(() => {
     if (isNew || !loaded || processSets.length === 0 || keyDeterminedRef.current) return;
-    if (storedKeyRef.current === undefined) return; // layout fetch not yet complete
+    if (storedKeyRef.current === undefined) return; // topology fetch not yet complete
     keyDeterminedRef.current = true;
     const stored = storedKeyRef.current;
     if (stored && stored !== CUSTOM_KEY) {
@@ -138,7 +148,7 @@ export function TopologyEditor() {
     if (isNew) { setLoaded(true); return; }
     const id = parseInt(topoId!, 10);
     setCookie('last_topo_id', topoId!);
-    api.getTopology(id).then(async (data) => {
+    api.getTopology(id).then((data) => {
       setTopo(data);
       const savedPos = (data.editor_positions ?? {}) as Record<string, NodePosition>;
       setPositions(
@@ -146,13 +156,14 @@ export function TopologyEditor() {
           ? savedPos
           : circleLayout(Object.keys(data.routers)),
       );
-      try {
-        const layout = await api.getTopoLayout(id);
-        if (layout.edge_offsets) setEdgeOffsets(layout.edge_offsets as Record<string, { ox: number; oy: number }>);
-        storedKeyRef.current = layout.process_set_key ?? null;
-      } catch (_) {
-        storedKeyRef.current = null;
+      if (data.editor_win_condition) {
+        setWinCondition(data.editor_win_condition as { brown: number; red: number; purple: number });
+      } else if ((data.processes as Record<string, { inputs?: Record<string, number> }>)?.factory_rocket?.inputs) {
+        const inp = (data.processes as Record<string, { inputs: Record<string, number> }>).factory_rocket.inputs;
+        setWinCondition({ brown: inp.brown ?? 2, red: inp.red ?? 6, purple: inp.purple ?? 8 });
       }
+      setEdgeOffsets((data.editor_edge_offsets ?? {}) as Record<string, { ox: number; oy: number }>);
+      storedKeyRef.current = data.editor_process_set ?? '';
       setLoaded(true);
     }).catch((e) => setError(String(e)));
   }, [topoId, isNew]);
@@ -203,6 +214,7 @@ export function TopologyEditor() {
     const newSet = processSets.find((s) => s.key === key);
     if (!newSet) return;
     setProcessSetKey(key);
+    setWinCondition(rocketDefaults(newSet));
     setTopo((prev) => {
       const routers = Object.fromEntries(
         Object.entries(prev.routers).map(([l, r]) => [
@@ -226,7 +238,7 @@ export function TopologyEditor() {
       let processes = prev.processes;
       // Auto-add factory_rocket to the processes dict if not already there
       if (processName === 'factory_rocket' && !('factory_rocket' in processes)) {
-        processes = { ...processes, factory_rocket: ROCKET_PROCESS };
+        processes = { ...processes, factory_rocket: { ...ROCKET_PROCESS, inputs: winConditionRef.current } };
       }
       return {
         ...prev,
@@ -249,7 +261,17 @@ export function TopologyEditor() {
     saveTimerRef.current = setTimeout(async () => {
       setSaveStatus('saving');
       try {
-        const data: TopologyData = { ...topo, editor_positions: positions };
+        const procs = 'factory_rocket' in topo.processes
+          ? { ...topo.processes, factory_rocket: { ...topo.processes.factory_rocket, inputs: winCondition } }
+          : topo.processes;
+        const data: TopologyData = {
+          ...topo,
+          processes: procs,
+          editor_positions: positions,
+          editor_edge_offsets: edgeOffsets,
+          editor_process_set: processSetKey === CUSTOM_KEY ? '' : processSetKey,
+          editor_win_condition: winCondition,
+        };
         if (isNew) {
           const summary = await api.createTopology(data);
           navigate(`/topology/${summary.id}/edit`, { replace: true });
@@ -264,20 +286,7 @@ export function TopologyEditor() {
       }
     }, 800);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [topo, positions, loaded, isNew, topoId, navigate]);
-
-  const edgeSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!loaded || isNew || !topoId) return;
-    if (edgeSaveTimerRef.current) clearTimeout(edgeSaveTimerRef.current);
-    edgeSaveTimerRef.current = setTimeout(() => {
-      api.saveTopoLayout(parseInt(topoId, 10), {
-        edge_offsets: edgeOffsets,
-        process_set_key: processSetKey === CUSTOM_KEY ? null : processSetKey,
-      }).catch(() => {});
-    }, 800);
-    return () => { if (edgeSaveTimerRef.current) clearTimeout(edgeSaveTimerRef.current); };
-  }, [edgeOffsets, processSetKey, loaded, isNew, topoId]);
+  }, [topo, positions, edgeOffsets, processSetKey, winCondition, loaded, isNew, topoId, navigate]);
 
   if (!loaded || !processSet) {
     return (
@@ -393,7 +402,7 @@ ${pickCellsSvg}
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${esc(topo.roundName)}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:white;padding:20px;font-family:monospace}h2{font-size:13px;color:#333;margin-bottom:12px}.topo-svg{display:block;width:100%;height:auto}@page{size:A4 portrait;margin:15mm}@media print{body{padding:0}}</style>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:white;padding:20px;font-family:monospace}h2{font-size:13px;color:#333;margin-bottom:12px}.topo-svg{display:block;width:100%;height:auto}@page{size:A4 portrait;margin:0}@media print{body{padding:15mm}}</style>
 </head><body>
 <h2>${esc(topo.roundName)}</h2>
 <svg class="topo-svg" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
@@ -478,6 +487,28 @@ ${pickSvg}
             >
               ↺
             </button>
+          </div>
+        </div>
+
+        {/* Win condition */}
+        <div style={sectionStyle}>
+          <label style={labelStyle}>Win condition</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(['brown', 'red', 'purple'] as const).map((mat) => (
+              <div key={mat} style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 3 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: MATERIAL_NAME_COLORS[mat] }} />
+                  <span style={{ fontSize: 9, color: '#4a6070', fontFamily: 'monospace', textTransform: 'uppercase' }}>{mat}</span>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  value={winCondition[mat]}
+                  onChange={(e) => setWinCondition((prev) => ({ ...prev, [mat]: parseInt(e.target.value) || 0 }))}
+                  style={{ ...inputStyle, padding: '4px 6px', textAlign: 'center' }}
+                />
+              </div>
+            ))}
           </div>
         </div>
 
@@ -652,7 +683,10 @@ ${pickSvg}
 
       {/* Export modal */}
       {exportOpen && (() => {
-        const exportData = { ...topo, editor_positions: positions, editor_edge_offsets: edgeOffsets };
+        const exportProcs = 'factory_rocket' in topo.processes
+          ? { ...topo.processes, factory_rocket: { ...topo.processes.factory_rocket, inputs: winCondition } }
+          : topo.processes;
+        const exportData = { ...topo, processes: exportProcs, editor_positions: positions, editor_edge_offsets: edgeOffsets, editor_win_condition: winCondition };
         const json = JSON.stringify(exportData, null, 2);
         return (
           <div onClick={() => setExportOpen(false)} style={{
@@ -673,7 +707,7 @@ ${pickSvg}
                   {([
                     ['Copy all', json],
                     ['Copy game data', JSON.stringify(
-                      (({ editor_positions: _p, editor_edge_offsets: _o, ...d }) => d)(exportData), null, 2
+                      (({ editor_positions: _p, editor_edge_offsets: _o, editor_win_condition: _w, ...d }) => d)(exportData), null, 2
                     )],
                   ] as [string, string][]).map(([label, text]) => (
                     <button key={label} onClick={() => navigator.clipboard.writeText(text)} style={{

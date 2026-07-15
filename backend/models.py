@@ -51,7 +51,6 @@ class LayoutData(BaseModel):
     positions: dict[str, NodePosition] = {}
     edge_offsets: dict[str, EdgeOffset] = {}
     custom_name: str | None = None
-    process_set_key: str | None = None
 
 
 class MaterialTraffic(BaseModel):

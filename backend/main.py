@@ -263,23 +263,6 @@ def save_layout(round_id: int, layout: LayoutData):
     return {"ok": True}
 
 
-@app.get("/api/topology/{topo_id}/layout", response_model=LayoutData)
-def get_topology_layout(topo_id: int):
-    f = LAYOUT_DIR / f"topo_{topo_id}.json"
-    if not f.exists():
-        raise HTTPException(status_code=404, detail="No saved layout")
-    return json.loads(f.read_text())
-
-
-@app.post("/api/topology/{topo_id}/layout")
-def save_topology_layout(topo_id: int, layout: LayoutData):
-    f = LAYOUT_DIR / f"topo_{topo_id}.json"
-    existing = json.loads(f.read_text()) if f.exists() else {}
-    incoming = layout.model_dump(exclude_unset=True)
-    f.write_text(json.dumps({**existing, **incoming}))
-    return {"ok": True}
-
-
 @app.get("/api/process-sets")
 def list_process_sets():
     result = []
